@@ -71,6 +71,13 @@ def parse_market(raw: dict[str, Any]) -> Market | None:
     ]
     tags_raw = raw.get("tags") or []
     tags = [str(t.get("label", t)) if isinstance(t, dict) else str(t) for t in tags_raw]
+    # group_id: satukan market saling-eksklusif. Prioritas: negRiskMarketID,
+    # lalu id event pertama (Gamma menyertakan `events` yang mengelompokkan market).
+    group_id = raw.get("negRiskMarketID") or raw.get("neg_risk_market_id")
+    if not group_id:
+        events = raw.get("events") or []
+        if events and isinstance(events[0], dict):
+            group_id = str(events[0].get("id") or "") or None
     return Market(
         id=str(raw.get("id", "")),
         question=str(raw.get("question", "")),
@@ -81,6 +88,8 @@ def parse_market(raw: dict[str, Any]) -> Market | None:
         volume=_to_float(raw.get("volume")),
         liquidity=_to_float(raw.get("liquidity")),
         neg_risk_market_id=raw.get("negRiskMarketID") or raw.get("neg_risk_market_id"),
+        group_id=group_id,
+        neg_risk=bool(raw.get("negRisk", False)),
         tags=tags,
     )
 
@@ -144,8 +153,37 @@ class PolymarketReadClient:
         log.info("fetch_markets", count=len(out))
         return out
 
-    def fetch_political_markets(self, limit: int = 200) -> list[Market]:
-        return [m for m in self.fetch_markets(limit=limit) if is_political(m)]
+    def fetch_markets_paginated(self, total: int = 500, page_size: int = 100) -> list[Market]:
+        """Tarik banyak market via offset pagination (untuk menjaring lebih banyak
+        market politik & membentuk grup neg-risk yang utuh)."""
+        out: list[Market] = []
+        offset = 0
+        while len(out) < total:
+            params = {
+                "limit": page_size,
+                "offset": offset,
+                "active": "true",
+                "closed": "false",
+                "order": "volume",
+                "ascending": "false",
+            }
+            r = self._client.get(f"{self.gamma_host}/markets", params=params)
+            r.raise_for_status()
+            data = r.json()
+            rows = data if isinstance(data, list) else data.get("data", [])
+            if not rows:
+                break
+            for raw in rows:
+                m = parse_market(raw)
+                if m:
+                    out.append(m)
+            offset += page_size
+        log.info("fetch_markets_paginated", count=len(out))
+        return out
+
+    def fetch_political_markets(self, limit: int = 200, paginate: bool = False) -> list[Market]:
+        src = self.fetch_markets_paginated(total=limit) if paginate else self.fetch_markets(limit=limit)
+        return [m for m in src if is_political(m)]
 
     def fetch_orderbook(self, token_id: str) -> OrderBook:
         r = self._client.get(f"{self.clob_host}/book", params={"token_id": token_id})

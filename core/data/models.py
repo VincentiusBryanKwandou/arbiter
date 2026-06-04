@@ -78,6 +78,9 @@ class Market(BaseModel):
     # Grup untuk arbitrage: market dengan neg_risk_market_id sama = saling eksklusif
     # (mis. semua kandidat dalam satu pemilu).
     neg_risk_market_id: str | None = None
+    # group_id: id event/grup yang menyatukan market saling-eksklusif (mis. 1 pemilu).
+    group_id: str | None = None
+    neg_risk: bool = False
     tags: list[str] = Field(default_factory=list)
 
 

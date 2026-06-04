@@ -18,10 +18,18 @@ pytest -q                              # harus hijau sebelum lanjut
 - [x] FASE 2 — Edge engine (arbitrage + validasi sinyal)
 - [x] FASE 3 — Risk module (Kelly, kill-switch, hard limits)
 - [x] (bonus) Scanner integrasi read-only — `python -m core.edge.scanner`
-- [ ] FASE 4 — Backtest (titik keputusan: ada edge atau tidak)
-- [ ] FASE 5 — Paper trading (≥14 hari)
-- [ ] FASE 6 — Live mikro ($5–$10, opsional, hanya jika 4 & 5 lolos)
-- [ ] FASE 7 — Monitoring & alert
+- [x] FASE 4 — Backtest engine + walk-forward + Monte Carlo — `python -m backtest.run`
+- [x] FASE 5 — Paper trading loop + journal — `python -m paper.loop --once`
+- [x] FASE 6 — Live executor (guarded, default MENOLAK) — `python -m live.loop --once`
+- [x] FASE 7 — Monitoring: report + alert — `python -m dashboard.report`
+
+## Cara mengaktifkan LIVE (HANYA setelah Fase 4 & 5 lolos)
+Semua wajib terpenuhi, kalau tidak live menolak jalan (by design):
+1. `config/.env`: `ATLAS_MODE=live`
+2. `config/.env`: `ATLAS_PRIVATE_KEY=<wallet khusus bot, dana minimal>`
+3. `config/.env`: `ATLAS_LIVE_CONFIRM=I_UNDERSTAND_THE_RISK`
+4. `pip install py-clob-client`
+Mulai `--max-trades 1` di SATU market, awasi ketat.
 
 ## Prosedur darurat (diisi di fase live)
 - **Kill-switch manual:** _(TBD Fase 3)_ — cara hentikan bot instan.

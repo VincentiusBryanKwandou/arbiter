@@ -38,70 +38,76 @@ def _yes_token(m: Market) -> str | None:
     return m.tokens[0].token_id if m.tokens else None
 
 
-def scan(limit: int = 300, max_markets: int = 80) -> list[tuple[str, ArbOpportunity]]:
-    """Kembalikan daftar (deskripsi, peluang) yang LOLOS validasi."""
-    cfg = get_config()
-    risk = RiskManager(cfg.risk, bankroll_usd=float(cfg.strategy["paper"]["starting_balance_usd"]))
-    min_edge = float(cfg.edge.get("min_edge_threshold", 0.05))
-    min_notional = float(cfg.risk.get("min_orderbook_depth_usd", 50.0))
+def find_opportunities(
+    client: PolymarketReadClient, *, limit: int = 300, max_markets: int = 80,
+    min_edge: float = 0.05, min_notional: float = 50.0,
+) -> list[tuple[str, str, ArbOpportunity]]:
+    """SCAN + DETECT + VALIDATE pada data live. Kembalikan (market_id, desc, opp)
+    untuk peluang yang LOLOS validasi. Tidak melakukan sizing/eksekusi.
 
-    found: list[tuple[str, ArbOpportunity]] = []
+    Dipakai bersama oleh scanner CLI dan paper/live loop (satu sumber kebenaran).
+    """
+    found: list[tuple[str, str, ArbOpportunity]] = []
     books: dict[str, OrderBook] = {}
     neg_groups: dict[str, list[Market]] = defaultdict(list)
 
-    with PolymarketReadClient() as client:
-        markets = client.fetch_political_markets(limit=limit)[:max_markets]
-        log.info("scanning", markets=len(markets))
-        for m in markets:
-            # tarik orderbook tiap token
-            for tok in m.tokens:
-                try:
-                    books[tok.token_id] = client.fetch_orderbook(tok.token_id)
-                except Exception as e:  # noqa: BLE001
-                    log.warning("book_fail", token=tok.token_id, err=str(e))
+    markets = client.fetch_political_markets(limit=limit, paginate=True)[:max_markets]
+    log.info("scanning", markets=len(markets))
+    for m in markets:
+        for tok in m.tokens:
+            try:
+                books[tok.token_id] = client.fetch_orderbook(tok.token_id)
+            except Exception as e:  # noqa: BLE001
+                log.warning("book_fail", token=tok.token_id, err=str(e))
 
-            # (1) binary dutch book intra-market
-            if len(m.tokens) == 2:
-                b0, b1 = books.get(m.tokens[0].token_id), books.get(m.tokens[1].token_id)
-                if b0 and b1:
-                    opp = detect_binary_dutch_book(
-                        b0, b1, m.tokens[0].outcome, m.tokens[1].outcome
-                    )
-                    if opp:
-                        _consider(found, risk, opp, m.id, f"[BINARY] {m.question[:60]}",
-                                  min_edge, min_notional)
+        if len(m.tokens) == 2:
+            b0, b1 = books.get(m.tokens[0].token_id), books.get(m.tokens[1].token_id)
+            if b0 and b1:
+                opp = detect_binary_dutch_book(b0, b1, m.tokens[0].outcome, m.tokens[1].outcome)
+                if opp and validate_opportunity(
+                    opp, min_edge_pct=min_edge, min_notional_usd=min_notional
+                ).passed:
+                    found.append((m.id, f"[BINARY] {m.question[:60]}", opp))
 
-            if m.neg_risk_market_id:
-                neg_groups[m.neg_risk_market_id].append(m)
+        if m.group_id:
+            neg_groups[m.group_id].append(m)
 
-        # (2) mutually-exclusive arbitrage across neg-risk groups
-        for gid, group in neg_groups.items():
-            if len(group) < 2:
-                continue
-            outcomes = []
-            ok = True
-            for m in group:
-                yt = _yes_token(m)
-                if not yt or yt not in books:
-                    ok = False
-                    break
-                outcomes.append((yt, m.question[:30], books[yt]))
-            if ok:
-                opp = detect_mutually_exclusive(outcomes)
-                if opp:
-                    _consider(found, risk, opp, gid,
-                              f"[GROUP {len(group)}] neg-risk {gid[:10]}", min_edge, min_notional)
+    for gid, group in neg_groups.items():
+        if len(group) < 2:
+            continue
+        outcomes, ok = [], True
+        for m in group:
+            yt = _yes_token(m)
+            if not yt or yt not in books:
+                ok = False
+                break
+            outcomes.append((yt, m.question[:30], books[yt]))
+        if ok:
+            opp = detect_mutually_exclusive(outcomes)
+            if opp and validate_opportunity(
+                opp, min_edge_pct=min_edge, min_notional_usd=min_notional
+            ).passed:
+                found.append((gid, f"[GROUP {len(group)}] {gid[:12]}", opp))
     return found
 
 
-def _consider(found, risk, opp, market_id, desc, min_edge, min_notional) -> None:
-    res = validate_opportunity(opp, min_edge_pct=min_edge, min_notional_usd=min_notional)
-    if not res.passed:
-        return
-    sizing = risk.size_arbitrage(opp, market_id)
-    if sizing.approved:
-        found.append((f"{desc} | edge={opp.edge:.3f}/{opp.edge_pct:.1%} "
-                      f"| size={sizing.sets} sets ${sizing.notional_usd:.2f}", opp))
+def scan(limit: int = 300, max_markets: int = 80) -> list[tuple[str, ArbOpportunity]]:
+    """Wrapper untuk CLI: cari peluang + sizing yang disetujui risk manager."""
+    cfg = get_config()
+    risk = RiskManager(cfg.risk, bankroll_usd=float(cfg.strategy["paper"]["starting_balance_usd"]))
+    out: list[tuple[str, ArbOpportunity]] = []
+    with PolymarketReadClient() as client:
+        opps = find_opportunities(
+            client, limit=limit, max_markets=max_markets,
+            min_edge=float(cfg.edge.get("min_edge_threshold", 0.05)),
+            min_notional=float(cfg.risk.get("min_orderbook_depth_usd", 50.0)),
+        )
+    for market_id, desc, opp in opps:
+        sizing = risk.size_arbitrage(opp, market_id)
+        if sizing.approved:
+            out.append((f"{desc} | edge={opp.edge:.3f}/{opp.edge_pct:.1%} "
+                        f"| size={sizing.sets} sets ${sizing.notional_usd:.2f}", opp))
+    return out
 
 
 def main() -> None:
