@@ -18,6 +18,8 @@ pytest -q                              # harus hijau sebelum lanjut
 - [x] FASE 2 — Edge engine (arbitrage + validasi sinyal)
 - [x] FASE 3 — Risk module (Kelly, kill-switch, hard limits)
 - [x] (bonus) Scanner integrasi read-only — `python -m core.edge.scanner`
+- [x] Multi-venue (Polymarket + Manifold + Kalshi) + multi-strategi — `python -m core.edge.research`
+- [x] Dashboard HTML + analytics — `python -m dashboard.html` (buka storage/dashboard.html)
 - [x] FASE 4 — Backtest engine + walk-forward + Monte Carlo — `python -m backtest.run`
 - [x] FASE 5 — Paper trading loop + journal — `python -m paper.loop --once`
 - [x] FASE 6 — Live executor (guarded, default MENOLAK) — `python -m live.loop --once`
