@@ -1,0 +1,51 @@
+# =====================================================================
+#  Parameter STRATEGI & RISIKO (bukan secret — boleh di-commit).
+#  Secret (private key, API key) ada di .env, BUKAN di sini.
+# =====================================================================
+
+meta:
+  bot_name: "atlas-poly"
+  # Hipotesis edge aktif — harus cocok dengan prompts/01_EDGE_HYPOTHESIS.md
+  active_edge: "cross_market_arb"   # opsi: stale_pricing | cross_market_arb | longshot_bias | fundamental_model
+  domain: "politics"                # LOCKED 2026-06-04: fokus market politik
+  observation_window_days: 14
+
+# --- RISK LIMITS (hard caps; strategi TIDAK boleh meng-override) ---
+risk:
+  kelly_fraction: 0.25          # quarter-Kelly. Jangan naikkan tanpa bukti.
+  max_per_trade_pct: 0.02       # maks 2% modal per posisi
+  max_per_market_pct: 0.05      # maks 5% modal per market
+  max_open_positions: 5
+  daily_loss_limit_pct: 0.10    # kill-switch: stop kalau rugi >10%/hari
+  min_orderbook_depth_usd: 50   # liquidity gate
+  resolution_buffer_minutes: 30 # jangan buka posisi <30 menit sebelum resolve
+
+# --- EDGE / SINYAL ---
+edge:
+  min_edge_threshold: 0.05      # |P_model - P_market| minimal untuk trade
+  max_spread_pct: 0.04          # skip market dengan spread terlalu lebar
+
+# --- EKSEKUSI ---
+execution:
+  order_type: "limit"           # limit-only untuk kontrol slippage
+  max_slippage_pct: 0.01
+  retry_attempts: 3
+  retry_backoff_seconds: 2
+
+# --- BACKTEST ---
+backtest:
+  monte_carlo_paths: 5000
+  walk_forward_train_pct: 0.6
+  cost_model:
+    gas_usd_per_tx: 0.02
+    assumed_slippage_pct: 0.005
+
+# --- PAPER TRADING ---
+paper:
+  starting_balance_usd: 1000    # uang palsu untuk simulasi
+  min_run_days: 14              # minimal sebelum dianggap valid
+
+# --- LOGGING ---
+logging:
+  level: "INFO"
+  audit_trail: true             # catat alasan tiap keputusan trade

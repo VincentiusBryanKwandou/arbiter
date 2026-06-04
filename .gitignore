@@ -1,0 +1,40 @@
+# --- SECRETS: jangan pernah commit ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+wallet*.json
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# --- Data & artefak runtime ---
+storage/*.db
+storage/*.sqlite
+storage/*.parquet
+storage/**/*.parquet
+*.log
+logs/
+
+# --- Tooling ---
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
