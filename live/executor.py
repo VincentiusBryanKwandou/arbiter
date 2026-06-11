@@ -90,5 +90,19 @@ class LiveBroker(Broker):
                          note="LIVE order(s) posted — verifikasi fill manual via dashboard")
 
     def balance(self) -> float:  # pragma: no cover
-        # TODO: query USDC balance via client/web3. Placeholder aman.
-        return 0.0
+        """Query saldo USDC on-chain via py-clob-client (Polygon).
+
+        Mengembalikan 0.0 kalau query gagal supaya loop tidak crash —
+        risk manager akan menolak trade kalau bankroll terlalu kecil.
+        """
+        try:
+            raw = self._client.get_balance()
+            # py-clob-client >= 0.17 mengembalikan dict {"USDC": "<amount>"}
+            # atau float tergantung versi; tangani keduanya.
+            if isinstance(raw, dict):
+                usdc = raw.get("USDC") or raw.get("usdc") or 0.0
+                return float(usdc)
+            return float(raw)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("balance_query_failed", error=str(exc))
+            return 0.0
