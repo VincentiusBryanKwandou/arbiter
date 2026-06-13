@@ -1,0 +1,16 @@
+{
+  "mode": "paper",
+  "uptime_hours": 0,
+  "last_scan_at": "2026-06-14T00:00:00Z",
+  "opportunities_found_today": 0,
+  "trades_today": 0,
+  "realized_pnl_today": 0,
+  "realized_pnl_total": 0,
+  "win_rate": 0,
+  "avg_edge_pct": 0,
+  "kill_switch_active": false,
+  "daily_loss_pct": 0,
+  "bankroll_usd": 1000,
+  "open_positions": 0,
+  "max_open_positions": 5
+}

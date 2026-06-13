@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  * {
+    @apply border-arbiter-border;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-arbiter-bg text-arbiter-text;
+  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { @apply bg-arbiter-bg; }
+  ::-webkit-scrollbar-thumb { @apply bg-arbiter-border rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-arbiter-muted; }
+}
+
+@layer components {
+  .card {
+    @apply bg-arbiter-card border border-arbiter-border rounded-xl p-4;
+  }
+
+  .metric-value {
+    @apply font-mono text-2xl font-semibold text-arbiter-text;
+  }
+
+  .metric-label {
+    @apply text-xs font-medium text-arbiter-text-secondary uppercase tracking-wider;
+  }
+
+  .badge-paper {
+    @apply px-2 py-0.5 rounded text-xs font-mono bg-blue-500/20 text-blue-400;
+  }
+
+  .badge-live {
+    @apply px-2 py-0.5 rounded text-xs font-mono bg-red-500/20 text-red-400;
+  }
+
+  .badge-success {
+    @apply px-2 py-0.5 rounded text-xs font-mono bg-green-500/20 text-green-400;
+  }
+
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+}

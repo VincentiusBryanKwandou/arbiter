@@ -35,6 +35,19 @@ logs/
 .coverage
 htmlcov/
 
+# --- Node.js / Next.js ---
+node_modules/
+dashboard-web/.next/
+dashboard-web/out/
+dashboard-web/.vercel/
+.vercel/
+
+# --- Storage runtime (bukan public/data yang di-commit) ---
+storage/snapshots/
+storage/journal/
+storage/reports/
+!storage/.gitkeep
+
 # --- OS / editor ---
 .DS_Store
 Thumbs.db

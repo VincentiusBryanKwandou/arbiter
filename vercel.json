@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "name": "arbiter",
+  "buildCommand": "cd dashboard-web && npm run build",
+  "outputDirectory": "dashboard-web/.next",
+  "installCommand": "cd dashboard-web && npm ci",
+  "framework": "nextjs",
+  "regions": ["sin1"],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS" },
+        {
+          "key": "Cache-Control",
+          "value": "s-maxage=30, stale-while-revalidate=60"
+        }
+      ]
+    }
+  ],
+  "rewrites": [{ "source": "/health", "destination": "/api/health" }]
+}
