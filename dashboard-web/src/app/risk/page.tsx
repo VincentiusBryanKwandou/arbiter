@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { fetchDashboard } from "@/lib/api";
 import { MetricCard } from "@/components/MetricCard";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 const LIMITS = {
   kelly_fraction: 0.25,

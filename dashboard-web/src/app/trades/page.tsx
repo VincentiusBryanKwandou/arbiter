@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { fetchTrades } from "@/lib/api";
 import { RecentTrades } from "@/components/RecentTrades";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 async function TradesContent() {
   const trades = await fetchTrades(100);

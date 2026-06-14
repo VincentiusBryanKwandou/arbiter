@@ -5,7 +5,15 @@ import type {
   MarketOpportunity,
 } from "@/types";
 
-const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+function getBase(): string {
+  // Client-side: relative URLs work fine
+  if (typeof window !== "undefined") return "";
+  // Server-side on Vercel: use the deployment URL
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  // Server-side locally: need absolute URL
+  return "http://localhost:3000";
+}
+const BASE = getBase();
 
 export async function fetchDashboard(): Promise<DashboardData> {
   const res = await fetch(`${BASE}/api/dashboard`, {

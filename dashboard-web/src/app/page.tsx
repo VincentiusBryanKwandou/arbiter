@@ -5,7 +5,7 @@ import { EquityChart } from "@/components/EquityChart";
 import { RecentTrades } from "@/components/RecentTrades";
 import { OpportunitiesFeed } from "@/components/OpportunitiesFeed";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 function fmtPnl(n: number) {
   return (n >= 0 ? "+" : "") + "$" + Math.abs(n).toFixed(2);

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { fetchOpportunities } from "@/lib/api";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 async function MarketsContent() {
   const opps = await fetchOpportunities();

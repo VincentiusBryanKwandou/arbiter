@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { fetchBacktest } from "@/lib/api";
 import { MetricCard } from "@/components/MetricCard";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 async function BacktestContent() {
   const bt = await fetchBacktest();
