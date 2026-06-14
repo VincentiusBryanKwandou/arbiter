@@ -108,7 +108,7 @@ def export_all(dry_run: bool = False) -> None:
     (PUBLIC_DATA / "equity.json").write_text(json.dumps(equity, indent=2))
     (PUBLIC_DATA / "opportunities.json").write_text(json.dumps(opps, indent=2))
     (STORAGE / "reports" / "stats.json").write_text(json.dumps(stats, indent=2))
-    print(f"[export] OK: {len(trades)} trades, {len(equity)} equity pts → public/data/")
+    print(f"[export] OK: {len(trades)} trades, {len(equity)} equity pts -> public/data/")
 
 
 if __name__ == "__main__":
