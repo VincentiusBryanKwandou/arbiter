@@ -20,6 +20,10 @@ apscheduler>=3.10
 # py-clob-client adalah SDK CLOB resmi Polymarket (chain: Polygon).
 py-clob-client>=0.17
 
+# === API server (dashboard control) ===
+fastapi>=0.111
+uvicorn[standard]>=0.30
+
 # === Dev / test ===
 pytest>=8.0
 pytest-asyncio>=0.23

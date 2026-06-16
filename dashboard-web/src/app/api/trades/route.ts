@@ -2,19 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 
-export async function GET(req: NextRequest) {
-  const limit = parseInt(req.nextUrl.searchParams.get("limit") ?? "50");
-  const filePath = join(process.cwd(), "public", "data", "trades.json");
+const BOT_URL = process.env.BOT_API_URL;
 
-  let trades: unknown[] = [];
-  try {
-    if (existsSync(filePath)) {
-      trades = JSON.parse(readFileSync(filePath, "utf-8"));
-    }
-  } catch {
-    // ignore
+export async function GET(req: NextRequest) {
+  const limit = parseInt(req.nextUrl.searchParams.get("limit") ?? "100");
+
+  if (BOT_URL) {
+    try {
+      const res = await fetch(`${BOT_URL}/trades?limit=${limit}`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(8_000),
+      });
+      if (res.ok) return NextResponse.json(await res.json());
+    } catch { /* fall through */ }
   }
 
-  const sliced = Array.isArray(trades) ? trades.slice(-limit).reverse() : [];
-  return NextResponse.json(sliced);
+  const filePath = join(process.cwd(), "public", "data", "trades.json");
+  try {
+    if (existsSync(filePath)) {
+      const all = JSON.parse(readFileSync(filePath, "utf-8")) as unknown[];
+      return NextResponse.json(Array.isArray(all) ? all.slice(-limit).reverse() : []);
+    }
+  } catch { /* ignore */ }
+  return NextResponse.json([]);
 }
