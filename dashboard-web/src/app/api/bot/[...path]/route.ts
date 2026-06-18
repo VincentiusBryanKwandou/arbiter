@@ -12,7 +12,7 @@ async function proxy(req: NextRequest, path: string[]) {
       method: req.method,
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body,
-      signal: AbortSignal.timeout(15_000),
+      signal: (() => { const c = new AbortController(); setTimeout(() => c.abort(), 15_000); return c.signal; })(),
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });

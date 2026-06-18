@@ -3,6 +3,8 @@ import type {
   Trade,
   BacktestResult,
   MarketOpportunity,
+  Position,
+  ScanOpportunity,
 } from "@/types";
 
 function getBase(): string {
@@ -55,6 +57,82 @@ export async function fetchOpportunities(): Promise<MarketOpportunity[]> {
   if (!res.ok) return [];
   return res.json();
 }
+
+// ── Bot control API (proxied through /api/bot → FastAPI on port 8001) ────────
+
+const BOT = "/api/bot";
+
+export async function getBotStatus(): Promise<{
+  bankroll_usd: number;
+  open_positions: number;
+  total_trades: number;
+  total_pnl: number;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`${BOT}/status`, { cache: "no-store" });
+    return res.json();
+  } catch {
+    return { bankroll_usd: 0, open_positions: 0, total_trades: 0, total_pnl: 0, error: "offline" };
+  }
+}
+
+export async function setBankroll(
+  bankroll_usd: number,
+  note = ""
+): Promise<{ ok: boolean; old: number; new: number; error?: string }> {
+  const res = await fetch(`${BOT}/funds`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ bankroll_usd, note }),
+  });
+  return res.json();
+}
+
+export async function scanMarkets(
+  limit = 50,
+  min_edge = 0.03
+): Promise<{ opportunities: ScanOpportunity[]; count: number; error?: string }> {
+  const res = await fetch(`${BOT}/markets/scan?limit=${limit}&min_edge=${min_edge}`, {
+    cache: "no-store",
+    signal: (() => { const c = new AbortController(); setTimeout(() => c.abort(), 60_000); return c.signal; })(),
+  });
+  return res.json();
+}
+
+export async function openPosition(req: {
+  market_id: string;
+  question: string;
+  sets: number;
+  edge_pct: number;
+  cost_per_set: number;
+  strategy: string;
+  venue: string;
+  note?: string;
+}): Promise<{ ok: boolean; position: Position; error?: string }> {
+  const res = await fetch(`${BOT}/positions/open`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+  return res.json();
+}
+
+export async function listPositions(): Promise<{ positions: Position[] }> {
+  try {
+    const res = await fetch(`${BOT}/positions`, { cache: "no-store" });
+    return res.json();
+  } catch {
+    return { positions: [] };
+  }
+}
+
+export async function closePosition(id: string): Promise<{ ok: boolean }> {
+  const res = await fetch(`${BOT}/positions/${id}`, { method: "DELETE" });
+  return res.json();
+}
+
+// ── Internal helpers ──────────────────────────────────────────────────────────
 
 function defaultStats() {
   return {

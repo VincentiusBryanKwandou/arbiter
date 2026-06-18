@@ -1,23 +1,18 @@
 import type { Trade } from "@/types";
 
 const STRAT_COLORS: Record<string, string> = {
-  arbitrage: "#60a5fa",
+  arbitrage: "#3b82f6",
   longshot_bias: "#f59e0b",
   mean_reversion: "#a78bfa",
 };
 
+const COLS = ["Time", "Market", "Strategy", "Sets", "Notional", "PnL", "Mode"];
+
 export function RecentTrades({ trades }: { trades: Trade[] }) {
   if (!trades.length) {
     return (
-      <div
-        style={{
-          textAlign: "center",
-          padding: "32px 0",
-          color: "#6b7280",
-          fontSize: "13px",
-        }}
-      >
-        No trades recorded yet. Paper loop is scanning for opportunities.
+      <div style={{ padding: "40px 0", textAlign: "center", color: "var(--text-3)", fontSize: "12px" }}>
+        No trades recorded. Paper loop is scanning for opportunities.
       </div>
     );
   }
@@ -27,16 +22,19 @@ export function RecentTrades({ trades }: { trades: Trade[] }) {
       <table style={{ width: "100%", fontSize: "12px", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            {["Time", "Market", "Strategy", "Sets", "Notional", "PnL", "Mode"].map((h) => (
+            {COLS.map((h) => (
               <th
                 key={h}
                 style={{
                   textAlign: "left",
-                  paddingBottom: "8px",
-                  paddingRight: "16px",
-                  color: "#6b7280",
+                  padding: "0 12px 10px 0",
+                  color: "var(--text-3)",
                   fontWeight: 500,
-                  borderBottom: "1px solid #1f2d45",
+                  fontSize: "11px",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  borderBottom: "1px solid var(--border)",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {h}
@@ -48,62 +46,56 @@ export function RecentTrades({ trades }: { trades: Trade[] }) {
           {trades.map((t) => (
             <tr
               key={t.id}
-              style={{ borderBottom: "1px solid rgba(31,45,69,0.5)" }}
+              style={{ borderBottom: "1px solid var(--border-subtle)" }}
             >
-              <td style={{ padding: "8px 16px 8px 0", color: "#6b7280", fontFamily: "monospace" }}>
-                {new Date(t.timestamp).toLocaleTimeString()}
+              <td className="mono" style={{ padding: "9px 12px 9px 0", color: "var(--text-3)", whiteSpace: "nowrap" }}>
+                {new Date(t.timestamp).toLocaleTimeString("en-US", { hour12: false })}
               </td>
               <td
                 style={{
-                  padding: "8px 16px 8px 0",
-                  maxWidth: "160px",
+                  padding: "9px 12px 9px 0",
+                  maxWidth: "180px",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
+                  color: "var(--text)",
                 }}
               >
                 {t.description}
               </td>
-              <td style={{ padding: "8px 16px 8px 0" }}>
+              <td style={{ padding: "9px 12px 9px 0" }}>
                 <span
                   style={{
-                    padding: "2px 6px",
-                    borderRadius: "4px",
+                    padding: "2px 7px",
+                    borderRadius: "99px",
                     fontSize: "10px",
-                    fontFamily: "monospace",
-                    color: STRAT_COLORS[t.strategy] ?? "#94a3b8",
-                    backgroundColor: `${STRAT_COLORS[t.strategy] ?? "#94a3b8"}20`,
+                    fontWeight: 500,
+                    color: STRAT_COLORS[t.strategy] ?? "var(--text-2)",
+                    backgroundColor: `${STRAT_COLORS[t.strategy] ?? "#94a3b8"}18`,
                   }}
                 >
                   {t.strategy}
                 </span>
               </td>
-              <td style={{ padding: "8px 16px 8px 0", fontFamily: "monospace" }}>
+              <td className="mono" style={{ padding: "9px 12px 9px 0", color: "var(--text-2)" }}>
                 {t.sets.toFixed(2)}
               </td>
-              <td style={{ padding: "8px 16px 8px 0", fontFamily: "monospace" }}>
+              <td className="mono" style={{ padding: "9px 12px 9px 0", color: "var(--text-2)" }}>
                 ${t.notional_usd.toFixed(2)}
               </td>
               <td
+                className="mono"
                 style={{
-                  padding: "8px 16px 8px 0",
-                  fontFamily: "monospace",
+                  padding: "9px 12px 9px 0",
                   fontWeight: 500,
-                  color: t.locked_profit >= 0 ? "#10b981" : "#ef4444",
+                  color: t.locked_profit >= 0 ? "var(--success)" : "var(--danger)",
                 }}
               >
                 {t.locked_profit >= 0 ? "+" : ""}${t.locked_profit.toFixed(4)}
               </td>
-              <td style={{ padding: "8px 0" }}>
+              <td style={{ padding: "9px 0" }}>
                 <span
-                  style={{
-                    padding: "2px 6px",
-                    borderRadius: "4px",
-                    fontSize: "10px",
-                    fontFamily: "monospace",
-                    color: t.mode === "live" ? "#ef4444" : "#60a5fa",
-                    backgroundColor: t.mode === "live" ? "rgba(239,68,68,0.1)" : "rgba(59,130,246,0.1)",
-                  }}
+                  className={t.mode === "live" ? "badge badge-live" : "badge badge-paper"}
                 >
                   {t.mode}
                 </span>

@@ -16,15 +16,26 @@ async function RiskContent() {
   const { stats } = await fetchDashboard();
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-      <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 600 }}>Risk Monitor</h2>
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      <div>
+        <h2 style={{ fontSize: "18px", fontWeight: 600, color: "var(--text)", marginBottom: "3px" }}>
+          Risk Monitor
+        </h2>
+        <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+          Real-time risk limits · Quarter-Kelly · Max 2% per trade
+        </p>
+      </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
         <MetricCard
           label="Daily Loss"
           value={`${(stats.daily_loss_pct * 100).toFixed(2)}%`}
           subValue={`Limit: ${(LIMITS.daily_loss_limit_pct * 100).toFixed(0)}%`}
-          highlight={stats.daily_loss_pct > 0.08 ? "danger" : stats.daily_loss_pct > 0.05 ? "warning" : "success"}
+          highlight={
+            stats.daily_loss_pct > 0.08 ? "danger" :
+            stats.daily_loss_pct > 0.05 ? "warning" :
+            "success"
+          }
         />
         <MetricCard
           label="Open Positions"
@@ -39,34 +50,28 @@ async function RiskContent() {
         <MetricCard
           label="Kelly Fraction"
           value="25%"
-          subValue="Quarter-Kelly (4× conservative)"
+          subValue="4x conservative"
           highlight="neutral"
         />
       </div>
 
-      <div
-        style={{
-          backgroundColor: "#1a2234",
-          border: "1px solid #1f2d45",
-          borderRadius: "12px",
-          padding: "16px",
-        }}
-      >
-        <div style={{ fontSize: "12px", color: "#94a3b8", marginBottom: "16px", fontWeight: 500 }}>
-          Hard Limits (from config/settings.yaml)
+      <div className="card">
+        <div className="label" style={{ marginBottom: "16px" }}>
+          Hard Limits — config/settings.yaml
         </div>
-        {Object.entries(LIMITS).map(([k, v]) => (
+        {Object.entries(LIMITS).map(([k, v], i, arr) => (
           <div
             key={k}
             style={{
               display: "flex",
               justifyContent: "space-between",
-              padding: "10px 0",
-              borderBottom: "1px solid rgba(31,45,69,0.5)",
+              alignItems: "center",
+              padding: "11px 0",
+              borderBottom: i < arr.length - 1 ? "1px solid var(--border-subtle)" : undefined,
             }}
           >
-            <span style={{ fontSize: "13px", color: "#94a3b8", fontFamily: "monospace" }}>{k}</span>
-            <span style={{ fontSize: "13px", fontFamily: "monospace", color: "#3b82f6" }}>
+            <span className="mono" style={{ fontSize: "12px", color: "var(--text-2)" }}>{k}</span>
+            <span className="mono" style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600 }}>
               {typeof v === "number" ? v : String(v)}
             </span>
           </div>
@@ -78,7 +83,13 @@ async function RiskContent() {
 
 export default function RiskPage() {
   return (
-    <Suspense fallback={<p style={{ color: "#6b7280", fontSize: "13px" }}>Loading risk data…</p>}>
+    <Suspense
+      fallback={
+        <div style={{ padding: "48px", textAlign: "center", color: "var(--text-3)", fontSize: "12px" }}>
+          Loading risk data…
+        </div>
+      }
+    >
       <RiskContent />
     </Suspense>
   );

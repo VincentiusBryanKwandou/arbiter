@@ -4,14 +4,20 @@ import { useEffect, useState } from "react";
 
 export function TopBar() {
   const [status, setStatus] = useState<"ok" | "error" | "loading">("loading");
-  const [time, setTime] = useState<string>("");
+  const [clock, setClock] = useState("");
+
+  useEffect(() => {
+    const tick = () => setClock(new Date().toLocaleTimeString("en-US", { hour12: false }));
+    tick();
+    const clockId = setInterval(tick, 1000);
+    return () => clearInterval(clockId);
+  }, []);
 
   useEffect(() => {
     const check = async () => {
       try {
-        const r = await fetch("/api/health");
+        const r = await fetch("/api/health", { cache: "no-store" });
         setStatus(r.ok ? "ok" : "error");
-        setTime(new Date().toLocaleTimeString());
       } catch {
         setStatus("error");
       }
@@ -21,12 +27,22 @@ export function TopBar() {
     return () => clearInterval(id);
   }, []);
 
+  const dotColor =
+    status === "ok" ? "var(--success)" :
+    status === "error" ? "var(--danger)" :
+    "var(--text-4)";
+
+  const statusLabel =
+    status === "ok" ? "System OK" :
+    status === "error" ? "API Error" :
+    "Checking";
+
   return (
     <header
       style={{
-        height: "64px",
-        borderBottom: "1px solid #1f2d45",
-        backgroundColor: "#111827",
+        height: "56px",
+        borderBottom: "1px solid var(--border-subtle)",
+        backgroundColor: "var(--surface)",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
@@ -35,35 +51,30 @@ export function TopBar() {
       }}
     >
       <div>
-        <div style={{ fontWeight: 600, fontSize: "14px" }}>
+        <div style={{ fontSize: "13px", fontWeight: 500, color: "var(--text)" }}>
           Political Market Intelligence
         </div>
-        <div style={{ fontSize: "11px", color: "#6b7280", marginTop: "2px" }}>
+        <div style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "1px" }}>
           Cross-market arbitrage · Fractional Kelly · Paper default
         </div>
       </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "16px",
-          fontSize: "12px",
-          color: "#6b7280",
-        }}
-      >
-        <span
-          style={{
-            color:
-              status === "ok"
-                ? "#10b981"
-                : status === "error"
-                ? "#ef4444"
-                : "#94a3b8",
-          }}
-        >
-          {status === "ok" ? "● System OK" : status === "error" ? "● API Error" : "○ Checking…"}
-        </span>
-        {time && <span>Updated {time}</span>}
+
+      <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+        {clock && (
+          <span className="mono" style={{ fontSize: "12px", color: "var(--text-3)" }}>
+            {clock}
+          </span>
+        )}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <div
+            className="status-dot"
+            style={{
+              backgroundColor: dotColor,
+              boxShadow: status === "ok" ? `0 0 6px ${dotColor}` : undefined,
+            }}
+          />
+          <span style={{ fontSize: "12px", color: "var(--text-3)" }}>{statusLabel}</span>
+        </div>
       </div>
     </header>
   );

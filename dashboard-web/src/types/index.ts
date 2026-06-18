@@ -65,6 +65,52 @@ export interface EquityPoint {
   pnl: number;
 }
 
+export interface LiveMarket {
+  market_id: string;
+  question: string;
+  outcomes: string[];
+  prices: number[];    // mid price per outcome (sum should ≈ 1.0 if efficient)
+  token_ids: string[];
+  volume: number;
+  liquidity: number;
+  end_date: string | null;
+  sum_prices: number;  // sum of mid prices across all outcomes
+  potential_edge: number; // estimated edge after fees if < 1.0
+  has_arb: boolean;
+  strategy: string;
+  venue: string;
+}
+
+export interface Position {
+  id: string;
+  market_id: string;
+  question: string;
+  sets: number;
+  cost_per_set: number;
+  notional_usd: number;
+  locked_profit: number;
+  edge_pct: number;
+  strategy: string;
+  venue: string;
+  status: "open" | "closed";
+  opened_at: string;
+  closed_at?: string;
+  note: string;
+}
+
+export interface ScanOpportunity {
+  market_id: string;
+  question: string;
+  edge_pct: number;
+  edge: number;
+  cost_per_set: number;
+  executable_sets: number;
+  required_capital: number;
+  strategy: string;
+  venue: string;
+  detected_at: string;
+}
+
 export interface DashboardData {
   stats: BotStats;
   recent_trades: Trade[];

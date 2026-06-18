@@ -5,49 +5,48 @@ interface MetricCardProps {
   highlight?: "success" | "danger" | "warning" | "neutral";
 }
 
-const COLORS = {
-  success: "#10b981",
-  danger: "#ef4444",
-  warning: "#f59e0b",
-  neutral: "#f1f5f9",
+const ACCENT: Record<string, string> = {
+  success: "var(--success)",
+  danger: "var(--danger)",
+  warning: "var(--warning)",
+  neutral: "var(--text)",
+};
+
+const LEFT_ACCENT: Record<string, string> = {
+  success: "var(--success)",
+  danger: "var(--danger)",
+  warning: "var(--warning)",
+  neutral: "transparent",
 };
 
 export function MetricCard({ label, value, subValue, highlight = "neutral" }: MetricCardProps) {
   return (
     <div
       style={{
-        backgroundColor: "#1a2234",
-        border: "1px solid #1f2d45",
-        borderRadius: "12px",
+        backgroundColor: "var(--card)",
+        border: "1px solid var(--border)",
+        borderLeft: `3px solid ${LEFT_ACCENT[highlight]}`,
+        borderRadius: "var(--radius)",
         padding: "16px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "6px",
       }}
     >
+      <div className="label">{label}</div>
       <div
+        className="mono"
         style={{
-          fontSize: "11px",
-          fontWeight: 500,
-          color: "#94a3b8",
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-          marginBottom: "8px",
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontFamily: "monospace",
           fontSize: "22px",
           fontWeight: 600,
-          color: COLORS[highlight],
+          color: ACCENT[highlight],
+          lineHeight: 1.1,
         }}
       >
         {value}
       </div>
       {subValue && (
-        <div style={{ marginTop: "4px", fontSize: "11px", color: "#6b7280" }}>
-          {subValue}
-        </div>
+        <div style={{ fontSize: "11px", color: "var(--text-3)" }}>{subValue}</div>
       )}
     </div>
   );

@@ -24,7 +24,7 @@ export async function GET() {
     try {
       const res = await fetch(`${BOT_URL}/dashboard`, {
         cache: "no-store",
-        signal: AbortSignal.timeout(10_000),
+        signal: (() => { const c = new AbortController(); setTimeout(() => c.abort(), 10_000); return c.signal; })(),
       });
       if (res.ok) {
         const data = await res.json();

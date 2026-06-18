@@ -10,29 +10,40 @@ async function BacktestContent() {
   if (!bt) {
     return (
       <div
+        className="card"
         style={{
-          backgroundColor: "#1a2234",
-          border: "1px solid #1f2d45",
-          borderRadius: "12px",
-          padding: "48px",
+          padding: "56px",
           textAlign: "center",
-          color: "#6b7280",
+          color: "var(--text-3)",
           fontSize: "13px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "10px",
         }}
       >
-        <p>No backtest data found.</p>
-        <p style={{ marginTop: "8px", fontFamily: "monospace", color: "#3b82f6", fontSize: "12px" }}>
+        <span>No backtest data available.</span>
+        <code className="mono" style={{ color: "var(--accent)", fontSize: "12px" }}>
           python -m backtest.run --mock --export-json
-        </p>
+        </code>
       </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-      <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 600 }}>Backtest Results</h2>
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      <div>
+        <h2 style={{ fontSize: "18px", fontWeight: 600, color: "var(--text)", marginBottom: "3px" }}>
+          Backtest Results
+        </h2>
+        {bt.generated_at && (
+          <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+            Generated {new Date(bt.generated_at).toLocaleString()}
+          </p>
+        )}
+      </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
         <MetricCard
           label="Total Return"
           value={`${bt.total_return_pct >= 0 ? "+" : ""}${bt.total_return_pct.toFixed(2)}%`}
@@ -56,7 +67,7 @@ async function BacktestContent() {
         />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
         <MetricCard
           label="MC Ruin Probability"
           value={`${(bt.monte_carlo_ruin_prob * 100).toFixed(1)}%`}
@@ -75,19 +86,19 @@ async function BacktestContent() {
           highlight="neutral"
         />
       </div>
-
-      {bt.generated_at && (
-        <div style={{ fontSize: "11px", color: "#6b7280" }}>
-          Generated: {new Date(bt.generated_at).toLocaleString()}
-        </div>
-      )}
     </div>
   );
 }
 
 export default function BacktestPage() {
   return (
-    <Suspense fallback={<p style={{ color: "#6b7280", fontSize: "13px" }}>Loading backtest…</p>}>
+    <Suspense
+      fallback={
+        <div style={{ padding: "48px", textAlign: "center", color: "var(--text-3)", fontSize: "12px" }}>
+          Loading backtest…
+        </div>
+      }
+    >
       <BacktestContent />
     </Suspense>
   );

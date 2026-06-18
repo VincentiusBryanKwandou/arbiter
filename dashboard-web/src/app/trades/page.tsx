@@ -6,20 +6,26 @@ export const dynamic = "force-dynamic";
 
 async function TradesContent() {
   const trades = await fetchTrades(100);
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 600 }}>Trade Log</h2>
-        <span style={{ fontSize: "13px", color: "#6b7280" }}>{trades.length} trades</span>
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+        <div>
+          <h2 style={{ fontSize: "18px", fontWeight: 600, color: "var(--text)", marginBottom: "3px" }}>
+            Trade Log
+          </h2>
+          <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+            All paper trades recorded by the bot
+          </p>
+        </div>
+        <span
+          className="mono"
+          style={{ fontSize: "12px", color: "var(--text-3)" }}
+        >
+          {trades.length} records
+        </span>
       </div>
-      <div
-        style={{
-          backgroundColor: "#1a2234",
-          border: "1px solid #1f2d45",
-          borderRadius: "12px",
-          padding: "16px",
-        }}
-      >
+      <div className="card">
         <RecentTrades trades={trades} />
       </div>
     </div>
@@ -28,7 +34,13 @@ async function TradesContent() {
 
 export default function TradesPage() {
   return (
-    <Suspense fallback={<p style={{ color: "#6b7280", fontSize: "13px" }}>Loading trades…</p>}>
+    <Suspense
+      fallback={
+        <div style={{ padding: "48px", textAlign: "center", color: "var(--text-3)", fontSize: "12px" }}>
+          Loading trades…
+        </div>
+      }
+    >
       <TradesContent />
     </Suspense>
   );

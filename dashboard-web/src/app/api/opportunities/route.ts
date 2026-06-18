@@ -9,7 +9,7 @@ export async function GET() {
     try {
       const res = await fetch(`${BOT_URL}/opportunities`, {
         cache: "no-store",
-        signal: AbortSignal.timeout(8_000),
+        signal: (() => { const c = new AbortController(); setTimeout(() => c.abort(), 8_000); return c.signal; })(),
       });
       if (res.ok) return NextResponse.json(await res.json());
     } catch { /* fall through */ }
