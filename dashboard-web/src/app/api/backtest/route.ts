@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const filePath = join(process.cwd(), "public", "data", "backtest.json");
   if (existsSync(filePath)) {
