@@ -19,7 +19,7 @@ const BASE = getBase();
 
 export async function fetchDashboard(): Promise<DashboardData> {
   const res = await fetch(`${BASE}/api/dashboard`, {
-    next: { revalidate: 30 },
+    cache: "no-store",
   });
   if (!res.ok) {
     return {
@@ -36,7 +36,7 @@ export async function fetchDashboard(): Promise<DashboardData> {
 
 export async function fetchTrades(limit = 50): Promise<Trade[]> {
   const res = await fetch(`${BASE}/api/trades?limit=${limit}`, {
-    next: { revalidate: 60 },
+    cache: "no-store",
   });
   if (!res.ok) return [];
   return res.json();
@@ -52,7 +52,7 @@ export async function fetchBacktest(): Promise<BacktestResult | null> {
 
 export async function fetchOpportunities(): Promise<MarketOpportunity[]> {
   const res = await fetch(`${BASE}/api/opportunities`, {
-    next: { revalidate: 15 },
+    cache: "no-store",
   });
   if (!res.ok) return [];
   return res.json();

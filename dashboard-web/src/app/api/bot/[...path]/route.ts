@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 const BOT_URL = process.env.BOT_API_URL ?? "http://localhost:8001";
 
 async function proxy(req: NextRequest, path: string[]) {
@@ -19,8 +21,8 @@ async function proxy(req: NextRequest, path: string[]) {
   } catch {
     return NextResponse.json(
       {
-        error: "Bot API tidak aktif.",
-        hint: "Jalankan di terminal project root: uvicorn api.server:app --host 0.0.0.0 --port 8001",
+        error: "Bot API offline.",
+        hint: "Deploy to Railway for 24/7, or run locally: uvicorn api.server:app --host 0.0.0.0 --port 8001",
         bot_url: BOT_URL,
       },
       { status: 503 }

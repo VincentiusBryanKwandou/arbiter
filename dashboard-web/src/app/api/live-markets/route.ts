@@ -1,10 +1,7 @@
-/**
- * Live market data langsung dari Polymarket Gamma API.
- * Tidak butuh bot Python — berjalan di Vercel serverless.
- * Melakukan deteksi Dutch book dasar menggunakan mid-price sebagai proxy.
- */
 import { NextResponse } from "next/server";
 import type { LiveMarket } from "@/types";
+
+export const dynamic = "force-dynamic";
 
 const GAMMA = "https://gamma-api.polymarket.com";
 

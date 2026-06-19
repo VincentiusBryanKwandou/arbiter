@@ -36,6 +36,7 @@ from pydantic import BaseModel
 log = structlog.get_logger()
 
 ROOT = Path(__file__).resolve().parent.parent
+_START_TS = datetime.now(timezone.utc)  # track uptime
 
 # STORAGE_PATH: override ke Railway persistent volume (/data) via env var
 STORAGE = Path(os.getenv("STORAGE_PATH", str(ROOT / "storage")))
@@ -223,23 +224,34 @@ def status():
 
 @app.get("/dashboard")
 def dashboard():
-    """Endpoint tunggal untuk semua data dashboard — dipanggil Vercel."""
+    """Single endpoint for all dashboard data — called by Vercel."""
     state = load_state()
     entries = read_journal()
+    today = datetime.now(timezone.utc).date().isoformat()
 
     total_pnl = sum(e.get("locked_profit", 0) for e in entries)
+    today_entries = [e for e in entries if e.get("ts", "").startswith(today)]
+    pnl_today = sum(e.get("locked_profit", 0) for e in today_entries)
     wins = sum(1 for e in entries if e.get("locked_profit", 0) > 0)
     win_rate = wins / len(entries) if entries else 0
     open_count = sum(1 for p in state.get("positions", []) if p.get("status") == "open")
     bankroll = state["bankroll_usd"]
 
-    # Equity curve
-    equity = bankroll - total_pnl  # starting equity
+    opps = state.get("opportunities", [])
+    avg_edge = round(sum(o.get("edge_pct", 0) for o in opps) / len(opps), 4) if opps else 0
+
+    uptime = (datetime.now(timezone.utc) - _START_TS).total_seconds() / 3600
+
+    # Equity curve — rebuild from journal
+    equity = bankroll - total_pnl
     equity_curve = []
     for e in entries:
         equity += e.get("locked_profit", 0)
-        equity_curve.append({"date": e.get("ts", utcnow()), "equity": round(equity, 4),
-                              "pnl": round(e.get("locked_profit", 0), 6)})
+        equity_curve.append({
+            "date": e.get("ts", utcnow()),
+            "equity": round(equity, 4),
+            "pnl": round(e.get("locked_profit", 0), 6),
+        })
 
     recent = entries[-20:][::-1]
     trades_out = [{
@@ -267,20 +279,19 @@ def dashboard():
         "strategy": o.get("strategy", "arbitrage"),
         "venue": o.get("venue", "polymarket"),
         "detected_at": o.get("detected_at", utcnow()),
-    } for o in state.get("opportunities", [])[:20]]
+    } for o in opps[:20]]
 
     return {
         "stats": {
             "mode": os.getenv("ATLAS_MODE", "paper"),
-            "uptime_hours": 0,
+            "uptime_hours": round(uptime, 2),
             "last_scan_at": state.get("last_scan") or utcnow(),
-            "opportunities_found_today": len(state.get("opportunities", [])),
-            "trades_today": len([e for e in entries
-                                 if e.get("ts", "").startswith(datetime.now(timezone.utc).date().isoformat())]),
-            "realized_pnl_today": 0,
+            "opportunities_found_today": len(opps),
+            "trades_today": len(today_entries),
+            "realized_pnl_today": round(pnl_today, 4),
             "realized_pnl_total": round(total_pnl, 4),
             "win_rate": round(win_rate, 4),
-            "avg_edge_pct": 0,
+            "avg_edge_pct": avg_edge,
             "kill_switch_active": False,
             "daily_loss_pct": 0,
             "bankroll_usd": bankroll,

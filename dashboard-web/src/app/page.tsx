@@ -5,6 +5,7 @@ import { MetricCard } from "@/components/MetricCard";
 import { EquityChart } from "@/components/EquityChart";
 import { RecentTrades } from "@/components/RecentTrades";
 import { OpportunitiesFeed } from "@/components/OpportunitiesFeed";
+import { AutoRefresh } from "@/components/AutoRefresh";
 
 const ActionPanel = nextDynamic(
   () => import("@/components/ActionPanel").then((m) => ({ default: m.ActionPanel })),
@@ -127,14 +128,17 @@ async function DashboardContent() {
 
 export default function HomePage() {
   return (
-    <Suspense
-      fallback={
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "260px" }}>
-          <p style={{ color: "var(--text-3)", fontSize: "12px" }}>Loading dashboard…</p>
-        </div>
-      }
-    >
-      <DashboardContent />
-    </Suspense>
+    <>
+      <AutoRefresh intervalMs={30_000} />
+      <Suspense
+        fallback={
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "260px" }}>
+            <p style={{ color: "var(--text-3)", fontSize: "12px" }}>Loading dashboard…</p>
+          </div>
+        }
+      >
+        <DashboardContent />
+      </Suspense>
+    </>
   );
 }
