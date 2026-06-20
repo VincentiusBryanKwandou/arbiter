@@ -11,9 +11,11 @@ const COLS = ["Time", "Market", "Strategy", "Sets", "Notional", "PnL", "Mode"];
 export function RecentTrades({
   trades,
   botConnected = true,
+  vercelNative = false,
 }: {
   trades: Trade[];
   botConnected?: boolean;
+  vercelNative?: boolean;
 }) {
   if (!trades.length) {
     return (
@@ -22,9 +24,11 @@ export function RecentTrades({
           No trades recorded yet.
         </div>
         <div style={{ fontSize: "11px", color: "var(--text-4)" }}>
-          {botConnected
-            ? "Paper loop is scanning — trades will appear here."
-            : "Deploy the bot to Railway to start the paper trading loop."}
+          {vercelNative
+            ? "Paper trading execution requires persistent storage — opportunities are detected live."
+            : botConnected
+            ? "Paper loop is running — trades will appear here."
+            : "Scanner runs inline on Vercel — no separate bot needed."}
         </div>
       </div>
     );

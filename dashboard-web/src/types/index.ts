@@ -119,5 +119,5 @@ export interface DashboardData {
   equity_history: EquityPoint[];
   last_updated: string;
   bot_connected: boolean;
-  data_source: "live" | "static";
+  data_source: "live" | "static" | "vercel-live";
 }

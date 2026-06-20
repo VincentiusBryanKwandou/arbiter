@@ -31,14 +31,18 @@ async function DashboardContent() {
   const data = await fetchDashboard();
   const { stats, equity_history, recent_trades, opportunities } = data;
   const botConnected = data.bot_connected ?? false;
+  const dataSource = data.data_source;
+  const isVercelNative = dataSource === "vercel-live";
   const isStale = !botConnected;
 
-  // Compute status label + color
+  // Status label + color
   const statusLabel = stats.kill_switch_active
     ? "Kill switch"
+    : isVercelNative
+    ? "Scanning · Vercel"
     : botConnected
-    ? "Running"
-    : "Bot offline";
+    ? "Running · Railway"
+    : "Offline";
   const statusColor = stats.kill_switch_active
     ? "var(--danger)"
     : botConnected
@@ -89,7 +93,7 @@ async function DashboardContent() {
             >
               {timeAgo(stats.last_scan_at)}
             </span>
-            {isStale && (
+            {isStale && !isVercelNative && (
               <span style={{ marginLeft: "6px", fontSize: "11px", color: "var(--warning)" }}>
                 · static snapshot
               </span>
@@ -141,14 +145,14 @@ async function DashboardContent() {
         </div>
         <div className="card">
           <div className="label" style={{ marginBottom: "12px" }}>Live Opportunities</div>
-          <OpportunitiesFeed opportunities={opportunities} botConnected={botConnected} />
+          <OpportunitiesFeed opportunities={opportunities} botConnected={botConnected} vercelNative={isVercelNative} />
         </div>
       </div>
 
       {/* Recent trades */}
       <div className="card">
         <div className="label" style={{ marginBottom: "12px" }}>Recent Trades</div>
-        <RecentTrades trades={recent_trades} botConnected={botConnected} />
+        <RecentTrades trades={recent_trades} botConnected={botConnected} vercelNative={isVercelNative} />
       </div>
     </div>
   );

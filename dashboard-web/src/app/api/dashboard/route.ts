@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
+import { scanPolymarket } from "@/lib/scanner";
 
 export const dynamic = "force-dynamic";
 
+// If Railway bot is set, proxy to it. Otherwise run scanner inline on Vercel.
 const BOT_URL = process.env.BOT_API_URL;
 
-const defaultStats = {
+const DEFAULT_STATS = {
   mode: "paper" as const,
   uptime_hours: 0,
   last_scan_at: new Date().toISOString(),
@@ -30,47 +32,88 @@ function readJson<T>(filePath: string, fallback: T): T {
   return fallback;
 }
 
+const NO_STORE = { headers: { "Cache-Control": "no-store" } };
+
 export async function GET() {
-  // ── Cloud mode: bot running on Railway ───────────────────────────────────
+  // ── 1. Prefer Railway bot (if configured) ────────────────────────────────
   if (BOT_URL) {
     try {
       const res = await fetch(`${BOT_URL}/dashboard`, {
         cache: "no-store",
-        signal: (() => { const c = new AbortController(); setTimeout(() => c.abort(), 10_000); return c.signal; })(),
+        signal: (() => {
+          const c = new AbortController();
+          setTimeout(() => c.abort(), 10_000);
+          return c.signal;
+        })(),
       });
       if (res.ok) {
         const data = await res.json();
         return NextResponse.json(
           { ...data, bot_connected: true, data_source: "live" },
-          { headers: { "Cache-Control": "no-store" } }
+          NO_STORE
         );
       }
-    } catch { /* fall through to static */ }
+    } catch { /* fall through to Vercel-native scanner */ }
   }
 
-  // ── Fallback: read from static JSON snapshot in public/data ──────────────
-  const PUBLIC = join(process.cwd(), "public", "data");
-  const staticStats = readJson(join(PUBLIC, "stats.json"), defaultStats);
+  // ── 2. Vercel-native scanner: run Dutch-book scan inline ─────────────────
+  try {
+    const { opportunities, scanned, ts } = await scanPolymarket(200, 0.01);
 
-  // Override last_scan_at so it reflects when static data was last written,
-  // not the current time (avoids the "just ran" confusion).
-  const stats = { ...staticStats };
+    const avgEdge =
+      opportunities.length > 0
+        ? opportunities.reduce((s, o) => s + o.edge_pct, 0) / opportunities.length
+        : 0;
 
-  const trades = readJson<unknown[]>(join(PUBLIC, "trades.json"), []);
-  const equity = readJson<unknown[]>(join(PUBLIC, "equity.json"), []);
-  const opps = readJson<unknown[]>(join(PUBLIC, "opportunities.json"), []);
+    // Read persisted state from static files (updated by cron job if available)
+    const PUBLIC = join(process.cwd(), "public", "data");
+    const savedStats = readJson(join(PUBLIC, "stats.json"), DEFAULT_STATS);
+    const trades = readJson<unknown[]>(join(PUBLIC, "trades.json"), []);
+    const equity = readJson<unknown[]>(join(PUBLIC, "equity.json"), []);
 
-  return NextResponse.json(
-    {
-      stats,
-      recent_trades: Array.isArray(trades) ? trades.slice(-20).reverse() : [],
-      opportunities: opps,
-      equity_history: equity,
-      backtest: null,
-      last_updated: new Date().toISOString(),
-      bot_connected: false,
-      data_source: "static",
-    },
-    { headers: { "Cache-Control": "no-store" } }
-  );
+    const stats = {
+      ...savedStats,
+      // Override stale fields with live-computed values
+      last_scan_at: ts,
+      opportunities_found_today: scanned,
+      avg_edge_pct: +avgEdge.toFixed(4),
+    };
+
+    return NextResponse.json(
+      {
+        stats,
+        recent_trades: Array.isArray(trades) ? trades.slice(-20).reverse() : [],
+        opportunities,
+        equity_history: equity,
+        backtest: null,
+        last_updated: ts,
+        bot_connected: true,
+        data_source: "vercel-live",
+        scanner_meta: { scanned, found: opportunities.length },
+      },
+      NO_STORE
+    );
+  } catch (scanErr) {
+    // ── 3. Final fallback: static snapshot ───────────────────────────────────
+    const PUBLIC = join(process.cwd(), "public", "data");
+    const stats = readJson(join(PUBLIC, "stats.json"), DEFAULT_STATS);
+    const trades = readJson<unknown[]>(join(PUBLIC, "trades.json"), []);
+    const equity = readJson<unknown[]>(join(PUBLIC, "equity.json"), []);
+    const opps = readJson<unknown[]>(join(PUBLIC, "opportunities.json"), []);
+
+    return NextResponse.json(
+      {
+        stats,
+        recent_trades: Array.isArray(trades) ? trades.slice(-20).reverse() : [],
+        opportunities: opps,
+        equity_history: equity,
+        backtest: null,
+        last_updated: new Date().toISOString(),
+        bot_connected: false,
+        data_source: "static",
+        scanner_error: String(scanErr),
+      },
+      NO_STORE
+    );
+  }
 }

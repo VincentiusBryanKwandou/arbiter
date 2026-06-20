@@ -12,21 +12,25 @@ function IconArrow() {
 export function OpportunitiesFeed({
   opportunities,
   botConnected = true,
+  vercelNative = false,
 }: {
   opportunities: MarketOpportunity[];
   botConnected?: boolean;
+  vercelNative?: boolean;
 }) {
   if (!opportunities.length) {
     return (
       <div style={{ padding: "28px 0", textAlign: "center" }}>
         <div style={{ fontSize: "12px", color: "var(--text-3)", marginBottom: "6px" }}>
-          {botConnected
+          {vercelNative
+            ? "No arb edge found this scan — markets look fairly priced."
+            : botConnected
             ? "No active opportunities — scanner is running."
             : "No opportunities in snapshot."}
         </div>
-        {!botConnected && (
+        {!botConnected && !vercelNative && (
           <div style={{ fontSize: "11px", color: "var(--text-4)" }}>
-            Deploy bot to Railway for live scanning.
+            Scanner runs inline on Vercel — live data on every page load.
           </div>
         )}
       </div>
