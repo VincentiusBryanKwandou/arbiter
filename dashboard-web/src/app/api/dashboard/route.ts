@@ -5,8 +5,9 @@ import { scanPolymarket } from "@/lib/scanner";
 
 export const dynamic = "force-dynamic";
 
-// If Railway bot is set, proxy to it. Otherwise run scanner inline on Vercel.
-const BOT_URL = process.env.BOT_API_URL;
+const BOT_URL   = process.env.BOT_API_URL;
+const REPO_RAW  = "https://raw.githubusercontent.com/nayrbryanGaming/arbiter/main/dashboard-web/public/data";
+const NO_STORE  = { headers: { "Cache-Control": "no-store" } };
 
 const DEFAULT_STATS = {
   mode: "paper" as const,
@@ -25,14 +26,26 @@ const DEFAULT_STATS = {
   max_open_positions: 5,
 };
 
-function readJson<T>(filePath: string, fallback: T): T {
+function readLocalJson<T>(file: string, fallback: T): T {
   try {
-    if (existsSync(filePath)) return JSON.parse(readFileSync(filePath, "utf-8")) as T;
+    if (existsSync(file)) return JSON.parse(readFileSync(file, "utf-8")) as T;
   } catch { /* ignore */ }
   return fallback;
 }
 
-const NO_STORE = { headers: { "Cache-Control": "no-store" } };
+async function fetchJson<T>(url: string, fallback: T, timeoutMs = 5000): Promise<T> {
+  try {
+    const c = new AbortController();
+    const id = setTimeout(() => c.abort(), timeoutMs);
+    const res = await fetch(`${url}?_=${Date.now()}`, {
+      cache: "no-store",
+      signal: c.signal,
+    });
+    clearTimeout(id);
+    if (res.ok) return res.json() as Promise<T>;
+  } catch { /* ignore */ }
+  return fallback;
+}
 
 export async function GET() {
   // ── 1. Prefer Railway bot (if configured) ────────────────────────────────
@@ -40,80 +53,59 @@ export async function GET() {
     try {
       const res = await fetch(`${BOT_URL}/dashboard`, {
         cache: "no-store",
-        signal: (() => {
-          const c = new AbortController();
-          setTimeout(() => c.abort(), 10_000);
-          return c.signal;
-        })(),
+        signal: (() => { const c = new AbortController(); setTimeout(() => c.abort(), 10_000); return c.signal; })(),
       });
       if (res.ok) {
         const data = await res.json();
-        return NextResponse.json(
-          { ...data, bot_connected: true, data_source: "live" },
-          NO_STORE
-        );
+        return NextResponse.json({ ...data, bot_connected: true, data_source: "live" }, NO_STORE);
       }
-    } catch { /* fall through to Vercel-native scanner */ }
+    } catch { /* fall through */ }
   }
 
-  // ── 2. Vercel-native scanner: run Dutch-book scan inline ─────────────────
+  // ── 2. Read state written by GitHub Actions cron (most up-to-date) ───────
+  const [ghStats, ghTrades, ghEquity, ghOpps] = await Promise.all([
+    fetchJson(`${REPO_RAW}/stats.json`,         DEFAULT_STATS),
+    fetchJson<unknown[]>(`${REPO_RAW}/trades.json`,        []),
+    fetchJson<unknown[]>(`${REPO_RAW}/equity.json`,        []),
+    fetchJson<unknown[]>(`${REPO_RAW}/opportunities.json`, []),
+  ]);
+
+  // ── 3. Run live scanner to get fresh opportunities ────────────────────────
+  let liveOpps: unknown[] = [];
+  let liveTs   = new Date().toISOString();
+  let scanMeta = { scanned: 0, found: 0 };
+
   try {
     const { opportunities, scanned, ts } = await scanPolymarket(200, 0.01);
+    liveOpps  = opportunities;
+    liveTs    = ts;
+    scanMeta  = { scanned, found: opportunities.length };
+  } catch { /* use GitHub opps as fallback */ }
 
-    const avgEdge =
-      opportunities.length > 0
-        ? opportunities.reduce((s, o) => s + o.edge_pct, 0) / opportunities.length
-        : 0;
+  // Merge: live scanner overrides GitHub opps (fresher), but use GitHub stats/trades
+  const finalOpps = liveOpps.length > 0 ? liveOpps : ghOpps;
 
-    // Read persisted state from static files (updated by cron job if available)
-    const PUBLIC = join(process.cwd(), "public", "data");
-    const savedStats = readJson(join(PUBLIC, "stats.json"), DEFAULT_STATS);
-    const trades = readJson<unknown[]>(join(PUBLIC, "trades.json"), []);
-    const equity = readJson<unknown[]>(join(PUBLIC, "equity.json"), []);
+  // Override stale last_scan_at with the live scanner's timestamp
+  const finalStats = {
+    ...ghStats,
+    last_scan_at: liveTs,
+    avg_edge_pct: (liveOpps as Array<{ edge_pct: number }>).length > 0
+      ? +((liveOpps as Array<{ edge_pct: number }>).reduce((s, o) => s + o.edge_pct, 0) / (liveOpps as Array<{ edge_pct: number }>).length).toFixed(4)
+      : (ghStats as Record<string, unknown>).avg_edge_pct ?? 0,
+  };
 
-    const stats = {
-      ...savedStats,
-      // Override stale fields with live-computed values
-      last_scan_at: ts,
-      opportunities_found_today: scanned,
-      avg_edge_pct: +avgEdge.toFixed(4),
-    };
-
-    return NextResponse.json(
-      {
-        stats,
-        recent_trades: Array.isArray(trades) ? trades.slice(-20).reverse() : [],
-        opportunities,
-        equity_history: equity,
-        backtest: null,
-        last_updated: ts,
-        bot_connected: true,
-        data_source: "vercel-live",
-        scanner_meta: { scanned, found: opportunities.length },
-      },
-      NO_STORE
-    );
-  } catch (scanErr) {
-    // ── 3. Final fallback: static snapshot ───────────────────────────────────
-    const PUBLIC = join(process.cwd(), "public", "data");
-    const stats = readJson(join(PUBLIC, "stats.json"), DEFAULT_STATS);
-    const trades = readJson<unknown[]>(join(PUBLIC, "trades.json"), []);
-    const equity = readJson<unknown[]>(join(PUBLIC, "equity.json"), []);
-    const opps = readJson<unknown[]>(join(PUBLIC, "opportunities.json"), []);
-
-    return NextResponse.json(
-      {
-        stats,
-        recent_trades: Array.isArray(trades) ? trades.slice(-20).reverse() : [],
-        opportunities: opps,
-        equity_history: equity,
-        backtest: null,
-        last_updated: new Date().toISOString(),
-        bot_connected: false,
-        data_source: "static",
-        scanner_error: String(scanErr),
-      },
-      NO_STORE
-    );
-  }
+  return NextResponse.json(
+    {
+      stats:         finalStats,
+      recent_trades: Array.isArray(ghTrades) ? ghTrades.slice(-20).reverse() : [],
+      opportunities: finalOpps,
+      equity_history: ghEquity,
+      backtest:      null,
+      last_updated:  liveTs,
+      bot_connected: true,
+      data_source:   "vercel-live",
+      scanner_meta:  scanMeta,
+    },
+    NO_STORE
+  );
 }

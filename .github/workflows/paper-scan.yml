@@ -1,0 +1,40 @@
+name: Paper Trading Scanner
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # every 5 minutes, 24/7
+  workflow_dispatch:          # manual trigger via API (no browser needed)
+
+permissions:
+  contents: write             # GITHUB_TOKEN auto-granted, no PAT needed
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run paper scanner
+        run: node scripts/paper-scan.mjs
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+
+      - name: Commit state if changed
+        run: |
+          git config user.name  "arbiter-bot[bot]"
+          git config user.email "arbiter-bot@users.noreply.github.com"
+          git diff --quiet && exit 0 || true
+          git add dashboard-web/public/data/stats.json \
+                  dashboard-web/public/data/trades.json \
+                  dashboard-web/public/data/equity.json \
+                  dashboard-web/public/data/opportunities.json
+          git commit -m "bot: paper scan $(date -u +%Y-%m-%dT%H:%M:%SZ) [skip vercel]"
+          git push
