@@ -548,12 +548,13 @@ export function ActionPanel({ initialBankroll }: { initialBankroll: number }) {
       </div>
 
       {!botOnline && botOnline !== null && (
-        <div className="alert alert-info">
-          <strong style={{ color: "var(--text)" }}>Bot API offline.</strong>{" "}
-          Deploy to Railway for 24/7 cloud access, or run locally:{" "}
-          <code className="mono" style={{ backgroundColor: "var(--bg)", padding: "1px 6px", borderRadius: "4px", fontSize: "11px", color: "var(--accent)" }}>
+        <div style={{ fontSize: "11px", color: "var(--text-3)", paddingLeft: "2px" }}>
+          Bot API offline — deploy to{" "}
+          <span className="mono" style={{ color: "var(--accent)" }}>Railway</span>{" "}
+          for 24/7 live scanning, or run:{" "}
+          <span className="mono" style={{ color: "var(--text-2)", fontSize: "10px" }}>
             uvicorn api.server:app --host 0.0.0.0 --port 8001
-          </code>
+          </span>
         </div>
       )}
 

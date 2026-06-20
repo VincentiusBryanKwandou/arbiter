@@ -9,18 +9,26 @@ function IconArrow() {
   );
 }
 
-export function OpportunitiesFeed({ opportunities }: { opportunities: MarketOpportunity[] }) {
+export function OpportunitiesFeed({
+  opportunities,
+  botConnected = true,
+}: {
+  opportunities: MarketOpportunity[];
+  botConnected?: boolean;
+}) {
   if (!opportunities.length) {
     return (
-      <div
-        style={{
-          padding: "32px 0",
-          textAlign: "center",
-          color: "var(--text-3)",
-          fontSize: "12px",
-        }}
-      >
-        No active opportunities — scanner is running.
+      <div style={{ padding: "28px 0", textAlign: "center" }}>
+        <div style={{ fontSize: "12px", color: "var(--text-3)", marginBottom: "6px" }}>
+          {botConnected
+            ? "No active opportunities — scanner is running."
+            : "No opportunities in snapshot."}
+        </div>
+        {!botConnected && (
+          <div style={{ fontSize: "11px", color: "var(--text-4)" }}>
+            Deploy bot to Railway for live scanning.
+          </div>
+        )}
       </div>
     );
   }

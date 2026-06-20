@@ -8,11 +8,24 @@ const STRAT_COLORS: Record<string, string> = {
 
 const COLS = ["Time", "Market", "Strategy", "Sets", "Notional", "PnL", "Mode"];
 
-export function RecentTrades({ trades }: { trades: Trade[] }) {
+export function RecentTrades({
+  trades,
+  botConnected = true,
+}: {
+  trades: Trade[];
+  botConnected?: boolean;
+}) {
   if (!trades.length) {
     return (
-      <div style={{ padding: "40px 0", textAlign: "center", color: "var(--text-3)", fontSize: "12px" }}>
-        No trades recorded. Paper loop is scanning for opportunities.
+      <div style={{ padding: "36px 0", textAlign: "center" }}>
+        <div style={{ fontSize: "12px", color: "var(--text-3)", marginBottom: "6px" }}>
+          No trades recorded yet.
+        </div>
+        <div style={{ fontSize: "11px", color: "var(--text-4)" }}>
+          {botConnected
+            ? "Paper loop is scanning — trades will appear here."
+            : "Deploy the bot to Railway to start the paper trading loop."}
+        </div>
       </div>
     );
   }
@@ -44,10 +57,7 @@ export function RecentTrades({ trades }: { trades: Trade[] }) {
         </thead>
         <tbody>
           {trades.map((t) => (
-            <tr
-              key={t.id}
-              style={{ borderBottom: "1px solid var(--border-subtle)" }}
-            >
+            <tr key={t.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
               <td className="mono" style={{ padding: "9px 12px 9px 0", color: "var(--text-3)", whiteSpace: "nowrap" }}>
                 {new Date(t.timestamp).toLocaleTimeString("en-US", { hour12: false })}
               </td>
@@ -94,9 +104,7 @@ export function RecentTrades({ trades }: { trades: Trade[] }) {
                 {t.locked_profit >= 0 ? "+" : ""}${t.locked_profit.toFixed(4)}
               </td>
               <td style={{ padding: "9px 0" }}>
-                <span
-                  className={t.mode === "live" ? "badge badge-live" : "badge badge-paper"}
-                >
+                <span className={t.mode === "live" ? "badge badge-live" : "badge badge-paper"}>
                   {t.mode}
                 </span>
               </td>

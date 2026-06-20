@@ -20,10 +20,33 @@ function fmtPnl(n: number) {
 function fmtPct(n: number) {
   return (n >= 0 ? "+" : "") + (n * 100).toFixed(1) + "%";
 }
+function timeAgo(iso: string): string {
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 60) return `${Math.round(diff)}s ago`;
+  if (diff < 3600) return `${Math.round(diff / 60)}m ago`;
+  return `${Math.round(diff / 3600)}h ago`;
+}
 
 async function DashboardContent() {
   const data = await fetchDashboard();
   const { stats, equity_history, recent_trades, opportunities } = data;
+  const botConnected = data.bot_connected ?? false;
+  const isStale = !botConnected;
+
+  // Compute status label + color
+  const statusLabel = stats.kill_switch_active
+    ? "Kill switch"
+    : botConnected
+    ? "Running"
+    : "Bot offline";
+  const statusColor = stats.kill_switch_active
+    ? "var(--danger)"
+    : botConnected
+    ? "var(--success)"
+    : "var(--warning)";
+  const statusGlow = botConnected && !stats.kill_switch_active
+    ? "0 0 6px var(--success)"
+    : undefined;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -34,7 +57,7 @@ async function DashboardContent() {
           <div>
             <div style={{ fontWeight: 600, fontSize: "13px", marginBottom: "2px" }}>Kill Switch Active</div>
             <div style={{ fontSize: "12px", opacity: 0.8 }}>
-              Daily loss limit exceeded. Bot has stopped trading automatically.
+              Daily loss limit exceeded. Bot has stopped automatically.
             </div>
           </div>
         </div>
@@ -60,20 +83,25 @@ async function DashboardContent() {
               {stats.mode.toUpperCase()}
             </span>
             {" "}&middot; Last scan:{" "}
-            <span className="mono">{new Date(stats.last_scan_at).toLocaleTimeString("en-US", { hour12: false })}</span>
+            <span
+              className="mono"
+              style={{ color: isStale ? "var(--warning)" : "var(--text-2)" }}
+            >
+              {timeAgo(stats.last_scan_at)}
+            </span>
+            {isStale && (
+              <span style={{ marginLeft: "6px", fontSize: "11px", color: "var(--warning)" }}>
+                · static snapshot
+              </span>
+            )}
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <div
             className="status-dot"
-            style={{
-              backgroundColor: stats.kill_switch_active ? "var(--danger)" : "var(--success)",
-              boxShadow: stats.kill_switch_active ? undefined : "0 0 6px var(--success)",
-            }}
+            style={{ backgroundColor: statusColor, boxShadow: statusGlow }}
           />
-          <span style={{ fontSize: "11px", color: "var(--text-3)" }}>
-            {stats.kill_switch_active ? "Kill switch" : "Running"}
-          </span>
+          <span style={{ fontSize: "11px", color: "var(--text-3)" }}>{statusLabel}</span>
         </div>
       </div>
 
@@ -83,13 +111,13 @@ async function DashboardContent() {
           label="Total PnL"
           value={fmtPnl(stats.realized_pnl_total)}
           subValue={`Today: ${fmtPnl(stats.realized_pnl_today)}`}
-          highlight={stats.realized_pnl_total >= 0 ? "success" : "danger"}
+          highlight={stats.realized_pnl_total > 0 ? "success" : stats.realized_pnl_total < 0 ? "danger" : "neutral"}
         />
         <MetricCard
           label="Win Rate"
           value={fmtPct(stats.win_rate)}
           subValue={`${stats.trades_today} trades today`}
-          highlight={stats.win_rate >= 0.55 ? "success" : "warning"}
+          highlight={stats.win_rate >= 0.55 ? "success" : stats.trades_today > 0 ? "warning" : "neutral"}
         />
         <MetricCard
           label="Bankroll"
@@ -113,14 +141,14 @@ async function DashboardContent() {
         </div>
         <div className="card">
           <div className="label" style={{ marginBottom: "12px" }}>Live Opportunities</div>
-          <OpportunitiesFeed opportunities={opportunities} />
+          <OpportunitiesFeed opportunities={opportunities} botConnected={botConnected} />
         </div>
       </div>
 
       {/* Recent trades */}
       <div className="card">
         <div className="label" style={{ marginBottom: "12px" }}>Recent Trades</div>
-        <RecentTrades trades={recent_trades} />
+        <RecentTrades trades={recent_trades} botConnected={botConnected} />
       </div>
     </div>
   );

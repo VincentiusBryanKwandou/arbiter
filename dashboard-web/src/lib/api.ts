@@ -29,6 +29,8 @@ export async function fetchDashboard(): Promise<DashboardData> {
       equity_history: [],
       backtest: null,
       last_updated: new Date().toISOString(),
+      bot_connected: false,
+      data_source: "static" as const,
     };
   }
   return res.json();

@@ -118,4 +118,6 @@ export interface DashboardData {
   backtest: BacktestResult | null;
   equity_history: EquityPoint[];
   last_updated: string;
+  bot_connected: boolean;
+  data_source: "live" | "static";
 }
