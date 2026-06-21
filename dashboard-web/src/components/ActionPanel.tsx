@@ -536,29 +536,27 @@ export function ActionPanel({ initialBankroll }: { initialBankroll: number }) {
         </button>
         <button
           onClick={() => setShowPosition(true)}
-          disabled={!botOnline}
-          title={botOnline ? undefined : "Bot API offline — deploy to Railway for 24/7 access"}
           className="btn btn-success"
         >
           Open Position
         </button>
-        <div style={{ marginLeft: "auto" }}>
-          <BotStatusBadge online={botOnline} />
-        </div>
+        {botOnline !== null && (
+          <div style={{ marginLeft: "auto" }}>
+            <BotStatusBadge online={botOnline} />
+          </div>
+        )}
       </div>
 
-      {!botOnline && botOnline !== null && (
+      {botOnline === false && (
         <div style={{ fontSize: "11px", color: "var(--text-3)", paddingLeft: "2px" }}>
-          Bot API offline — deploy to{" "}
-          <span className="mono" style={{ color: "var(--accent)" }}>Railway</span>{" "}
-          for 24/7 live scanning, or run:{" "}
+          Live bot API offline — positions are simulated (paper).{" "}
           <span className="mono" style={{ color: "var(--text-2)", fontSize: "10px" }}>
             uvicorn api.server:app --host 0.0.0.0 --port 8001
           </span>
         </div>
       )}
 
-      <PositionsTable positions={positions} onClose={handleClose} />
+      {positions.length > 0 && <PositionsTable positions={positions} onClose={handleClose} />}
 
       {showFunds && (
         <AddFundsModal

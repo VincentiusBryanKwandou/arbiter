@@ -5,17 +5,24 @@ interface MetricCardProps {
   highlight?: "success" | "danger" | "warning" | "neutral";
 }
 
-const ACCENT: Record<string, string> = {
+const ACCENT_COLOR: Record<string, string> = {
   success: "var(--success)",
-  danger: "var(--danger)",
+  danger:  "var(--danger)",
   warning: "var(--warning)",
   neutral: "var(--text)",
 };
 
-const LEFT_ACCENT: Record<string, string> = {
+const TOP_BAR: Record<string, string> = {
   success: "var(--success)",
-  danger: "var(--danger)",
+  danger:  "var(--danger)",
   warning: "var(--warning)",
+  neutral: "transparent",
+};
+
+const BG_TINT: Record<string, string> = {
+  success: "rgba(16, 185, 129, 0.03)",
+  danger:  "rgba(239, 68, 68, 0.03)",
+  warning: "rgba(245, 158, 11, 0.03)",
   neutral: "transparent",
 };
 
@@ -24,29 +31,39 @@ export function MetricCard({ label, value, subValue, highlight = "neutral" }: Me
     <div
       style={{
         backgroundColor: "var(--card)",
+        backgroundImage: BG_TINT[highlight] !== "transparent"
+          ? `linear-gradient(135deg, ${BG_TINT[highlight]} 0%, transparent 60%)`
+          : undefined,
         border: "1px solid var(--border)",
-        borderLeft: `3px solid ${LEFT_ACCENT[highlight]}`,
+        borderTop: `2px solid ${TOP_BAR[highlight]}`,
         borderRadius: "var(--radius)",
-        padding: "16px",
+        padding: "18px 18px 16px",
         display: "flex",
         flexDirection: "column",
-        gap: "6px",
+        gap: "8px",
+        transition: "border-color 0.2s, background-color 0.2s",
+        cursor: "default",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
       <div className="label">{label}</div>
       <div
         className="mono"
         style={{
-          fontSize: "22px",
-          fontWeight: 600,
-          color: ACCENT[highlight],
-          lineHeight: 1.1,
+          fontSize: "24px",
+          fontWeight: 700,
+          color: ACCENT_COLOR[highlight],
+          lineHeight: 1,
+          letterSpacing: "-0.03em",
         }}
       >
         {value}
       </div>
       {subValue && (
-        <div style={{ fontSize: "11px", color: "var(--text-3)" }}>{subValue}</div>
+        <div style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "2px" }}>
+          {subValue}
+        </div>
       )}
     </div>
   );

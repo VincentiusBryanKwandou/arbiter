@@ -30,55 +30,53 @@ function timeAgo(iso: string): string {
 async function DashboardContent() {
   const data = await fetchDashboard();
   const { stats, equity_history, recent_trades, opportunities } = data;
-  const botConnected = data.bot_connected ?? false;
   const dataSource = data.data_source;
   const isVercelNative = dataSource === "vercel-live";
-  const isStale = !botConnected;
+  const isLive = dataSource === "live";
+  const botConnected = isVercelNative || isLive || (data.bot_connected ?? false);
 
-  // Status label + color
   const statusLabel = stats.kill_switch_active
-    ? "Kill switch"
+    ? "Kill Switch Active"
     : isVercelNative
-    ? "Scanning · Vercel"
-    : botConnected
-    ? "Running · Railway"
+    ? "Live · Vercel Edge"
+    : isLive
+    ? "Live · Railway"
     : "Offline";
+
   const statusColor = stats.kill_switch_active
     ? "var(--danger)"
     : botConnected
     ? "var(--success)"
     : "var(--warning)";
-  const statusGlow = botConnected && !stats.kill_switch_active
-    ? "0 0 6px var(--success)"
-    : undefined;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
       {/* Kill switch banner */}
       {stats.kill_switch_active && (
         <div className="alert alert-danger" style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
           <div>
             <div style={{ fontWeight: 600, fontSize: "13px", marginBottom: "2px" }}>Kill Switch Active</div>
-            <div style={{ fontSize: "12px", opacity: 0.8 }}>
-              Daily loss limit exceeded. Bot has stopped automatically.
+            <div style={{ fontSize: "11px", opacity: 0.85 }}>
+              Daily loss limit exceeded. Bot has halted automatically. Manual reset required.
             </div>
           </div>
         </div>
       )}
 
       {/* Action Panel */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-        <ActionPanel initialBankroll={stats.bankroll_usd} />
-      </div>
+      <ActionPanel initialBankroll={stats.bankroll_usd} />
 
       {/* Page header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <h2 style={{ fontSize: "18px", fontWeight: 600, color: "var(--text)", marginBottom: "2px" }}>
+          <h2 style={{ fontSize: "17px", fontWeight: 700, color: "var(--text)", marginBottom: "2px", letterSpacing: "-0.02em" }}>
             Overview
           </h2>
-          <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+          <p style={{ fontSize: "11px", color: "var(--text-3)" }}>
             Mode:{" "}
             <span
               className="mono"
@@ -86,31 +84,40 @@ async function DashboardContent() {
             >
               {stats.mode.toUpperCase()}
             </span>
-            {" "}&middot; Last scan:{" "}
-            <span
-              className="mono"
-              style={{ color: isStale ? "var(--warning)" : "var(--text-2)" }}
-            >
+            <span style={{ margin: "0 6px", color: "var(--text-4)" }}>&middot;</span>
+            Last scan:{" "}
+            <span className="mono" style={{ color: "var(--text-2)" }}>
               {timeAgo(stats.last_scan_at)}
             </span>
-            {isStale && !isVercelNative && (
-              <span style={{ marginLeft: "6px", fontSize: "11px", color: "var(--warning)" }}>
-                · static snapshot
-              </span>
-            )}
           </p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "5px 12px",
+            borderRadius: "99px",
+            border: `1px solid ${botConnected ? "rgba(16,185,129,0.2)" : "rgba(245,158,11,0.2)"}`,
+            backgroundColor: botConnected ? "rgba(16,185,129,0.05)" : "rgba(245,158,11,0.05)",
+          }}
+        >
           <div
-            className="status-dot"
-            style={{ backgroundColor: statusColor, boxShadow: statusGlow }}
+            className={`status-dot${botConnected && !stats.kill_switch_active ? " status-dot-live" : ""}`}
+            style={{
+              backgroundColor: statusColor,
+              boxShadow: botConnected && !stats.kill_switch_active ? `0 0 5px ${statusColor}` : undefined,
+            }}
           />
-          <span style={{ fontSize: "11px", color: "var(--text-3)" }}>{statusLabel}</span>
+          <span style={{ fontSize: "11px", fontWeight: 500, color: statusColor }}>{statusLabel}</span>
         </div>
       </div>
 
-      {/* Metrics */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
+      {/* Metric cards — responsive 4→2→2 */}
+      <div
+        className="grid-4"
+        style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}
+      >
         <MetricCard
           label="Total PnL"
           value={fmtPnl(stats.realized_pnl_total)}
@@ -126,34 +133,89 @@ async function DashboardContent() {
         <MetricCard
           label="Bankroll"
           value={`$${stats.bankroll_usd.toFixed(2)}`}
-          subValue={`${stats.open_positions}/${stats.max_open_positions} positions`}
+          subValue={`${stats.open_positions} / ${stats.max_open_positions} positions open`}
           highlight={stats.daily_loss_pct > 0.08 ? "danger" : "neutral"}
         />
         <MetricCard
-          label="Opportunities"
+          label="Edge Signals"
           value={stats.opportunities_found_today}
-          subValue={`Avg edge: ${fmtPct(stats.avg_edge_pct)}`}
+          subValue={`Avg ${fmtPct(stats.avg_edge_pct)} edge`}
           highlight={stats.opportunities_found_today > 0 ? "success" : "neutral"}
         />
       </div>
 
-      {/* Charts */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+      {/* Charts row */}
+      <div
+        className="grid-2"
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}
+      >
         <div className="card">
-          <div className="label" style={{ marginBottom: "12px" }}>Equity Curve</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+            <div className="label">Equity Curve</div>
+            {equity_history.length > 0 && (
+              <span className="mono" style={{ fontSize: "11px", color: equity_history[equity_history.length - 1]?.equity >= equity_history[0]?.equity ? "var(--success)" : "var(--danger)", fontWeight: 600 }}>
+                ${equity_history[equity_history.length - 1]?.equity.toFixed(2)}
+              </span>
+            )}
+          </div>
           <EquityChart data={equity_history} />
         </div>
         <div className="card">
-          <div className="label" style={{ marginBottom: "12px" }}>Live Opportunities</div>
-          <OpportunitiesFeed opportunities={opportunities} botConnected={botConnected} vercelNative={isVercelNative} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+            <div className="label">Live Opportunities</div>
+            {opportunities.length > 0 && (
+              <span
+                className="badge badge-success"
+                style={{ fontSize: "10px" }}
+              >
+                {opportunities.length} found
+              </span>
+            )}
+          </div>
+          <OpportunitiesFeed
+            opportunities={opportunities}
+            botConnected={botConnected}
+            vercelNative={isVercelNative}
+          />
         </div>
       </div>
 
       {/* Recent trades */}
       <div className="card">
-        <div className="label" style={{ marginBottom: "12px" }}>Recent Trades</div>
-        <RecentTrades trades={recent_trades} botConnected={botConnected} vercelNative={isVercelNative} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <div className="label">Recent Trades</div>
+          {recent_trades.length > 0 && (
+            <a href="/trades" style={{ fontSize: "11px", color: "var(--accent)", textDecoration: "none" }}>
+              View all {recent_trades.length}+
+            </a>
+          )}
+        </div>
+        <RecentTrades
+          trades={recent_trades}
+          botConnected={botConnected}
+          vercelNative={isVercelNative}
+        />
       </div>
+    </div>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="card" style={{ height: "96px" }}>
+            <div className="skeleton" style={{ height: "10px", width: "60px", marginBottom: "12px" }} />
+            <div className="skeleton" style={{ height: "28px", width: "80px" }} />
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+        <div className="card skeleton" style={{ height: "280px" }} />
+        <div className="card skeleton" style={{ height: "280px" }} />
+      </div>
+      <div className="card skeleton" style={{ height: "200px" }} />
     </div>
   );
 }
@@ -162,13 +224,7 @@ export default function HomePage() {
   return (
     <>
       <AutoRefresh intervalMs={30_000} />
-      <Suspense
-        fallback={
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "260px" }}>
-            <p style={{ color: "var(--text-3)", fontSize: "12px" }}>Loading dashboard…</p>
-          </div>
-        }
-      >
+      <Suspense fallback={<DashboardSkeleton />}>
         <DashboardContent />
       </Suspense>
     </>

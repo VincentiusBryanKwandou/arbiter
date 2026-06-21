@@ -4,6 +4,7 @@ import { join } from "path";
 import { scanPolymarket } from "@/lib/scanner";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 25;
 
 const BOT_URL   = process.env.BOT_API_URL;
 const REPO_RAW  = "https://raw.githubusercontent.com/nayrbryanGaming/arbiter/main/dashboard-web/public/data";
@@ -94,12 +95,22 @@ export async function GET() {
       : (ghStats as Record<string, unknown>).avg_edge_pct ?? 0,
   };
 
+  // Normalize equity: paper-scan writes {ts, bankroll, pnl_cumulative}
+  // but EquityChart expects {date, equity, pnl}
+  const normalizedEquity = Array.isArray(ghEquity)
+    ? (ghEquity as Array<Record<string, unknown>>).map((pt) => ({
+        date:   String(pt.ts ?? pt.date ?? ""),
+        equity: Number(pt.bankroll ?? pt.equity ?? 0),
+        pnl:    Number(pt.pnl_cumulative ?? pt.pnl ?? 0),
+      }))
+    : [];
+
   return NextResponse.json(
     {
       stats:         finalStats,
       recent_trades: Array.isArray(ghTrades) ? ghTrades.slice(-20).reverse() : [],
       opportunities: finalOpps,
-      equity_history: ghEquity,
+      equity_history: normalizedEquity,
       backtest:      null,
       last_updated:  liveTs,
       bot_connected: true,

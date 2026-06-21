@@ -3,21 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// SVG icon components — no emoji
 function IconDashboard() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
     </svg>
   );
 }
 
 function IconMarkets() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
       <polyline points="16 7 22 7 22 13" />
     </svg>
@@ -26,20 +25,18 @@ function IconMarkets() {
 
 function IconTrades() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="8" y1="6" x2="21" y2="6" />
-      <line x1="8" y1="12" x2="21" y2="12" />
-      <line x1="8" y1="18" x2="21" y2="18" />
-      <line x1="3" y1="6" x2="3.01" y2="6" />
-      <line x1="3" y1="12" x2="3.01" y2="12" />
-      <line x1="3" y1="18" x2="3.01" y2="18" />
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+      <rect x="9" y="3" width="6" height="4" rx="1" />
+      <line x1="9" y1="12" x2="15" y2="12" />
+      <line x1="9" y1="16" x2="13" y2="16" />
     </svg>
   );
 }
 
 function IconBacktest() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="1 4 1 10 7 10" />
       <path d="M3.51 15a9 9 0 1 0 .49-5" />
     </svg>
@@ -48,7 +45,7 @@ function IconBacktest() {
 
 function IconRisk() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
     </svg>
   );
@@ -56,22 +53,18 @@ function IconRisk() {
 
 function LogoMark() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
-        fill="currentColor"
-        opacity="0.9"
-      />
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="currentColor" />
     </svg>
   );
 }
 
 const NAV = [
-  { href: "/", label: "Dashboard", Icon: IconDashboard },
-  { href: "/markets", label: "Markets", Icon: IconMarkets },
-  { href: "/trades", label: "Trade Log", Icon: IconTrades },
-  { href: "/backtest", label: "Backtest", Icon: IconBacktest },
-  { href: "/risk", label: "Risk Monitor", Icon: IconRisk },
+  { href: "/",         label: "Dashboard",    Icon: IconDashboard },
+  { href: "/markets",  label: "Markets",      Icon: IconMarkets },
+  { href: "/trades",   label: "Trade Log",    Icon: IconTrades },
+  { href: "/backtest", label: "Backtest",     Icon: IconBacktest },
+  { href: "/risk",     label: "Risk Monitor", Icon: IconRisk },
 ];
 
 export function Sidebar() {
@@ -91,7 +84,7 @@ export function Sidebar() {
       {/* Logo */}
       <div
         style={{
-          height: "56px",
+          height: "52px",
           display: "flex",
           alignItems: "center",
           gap: "10px",
@@ -101,8 +94,8 @@ export function Sidebar() {
       >
         <div
           style={{
-            width: "30px",
-            height: "30px",
+            width: "28px",
+            height: "28px",
             borderRadius: "8px",
             background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
             display: "flex",
@@ -110,23 +103,32 @@ export function Sidebar() {
             justifyContent: "center",
             color: "#fff",
             flexShrink: 0,
+            boxShadow: "0 2px 8px rgba(59,130,246,0.3)",
           }}
         >
           <LogoMark />
         </div>
-        <span style={{ fontWeight: 600, fontSize: "14px", letterSpacing: "-0.01em" }}>
+        <span
+          style={{
+            fontWeight: 700,
+            fontSize: "14px",
+            letterSpacing: "-0.02em",
+            color: "var(--text)",
+          }}
+        >
           Arbiter
         </span>
         <span
           style={{
             marginLeft: "auto",
-            fontSize: "10px",
-            fontWeight: 500,
-            letterSpacing: "0.04em",
+            fontSize: "9px",
+            fontWeight: 600,
+            letterSpacing: "0.08em",
             backgroundColor: "var(--accent-muted)",
             color: "var(--accent)",
-            padding: "2px 7px",
+            padding: "2px 6px",
             borderRadius: "99px",
+            border: "1px solid rgba(59,130,246,0.15)",
           }}
         >
           PAPER
@@ -134,9 +136,9 @@ export function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: "10px 8px" }}>
-        <div style={{ marginBottom: "4px" }}>
-          <div className="label" style={{ padding: "4px 10px 8px" }}>Navigation</div>
+      <nav style={{ flex: 1, padding: "12px 8px", display: "flex", flexDirection: "column", gap: "1px" }}>
+        <div className="label" style={{ padding: "0 10px 8px", fontSize: "9px" }}>
+          Navigation
         </div>
         {NAV.map(({ href, label, Icon }) => {
           const active = path === href;
@@ -158,21 +160,37 @@ export function Sidebar() {
         style={{
           padding: "12px 16px",
           borderTop: "1px solid var(--border-subtle)",
-          fontSize: "11px",
-          color: "var(--text-4)",
           display: "flex",
           flexDirection: "column",
-          gap: "4px",
+          gap: "6px",
         }}
       >
-        <div style={{ color: "var(--text-3)" }}>Paper trading · ¼-Kelly</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <div
+            className="status-dot status-dot-live"
+            style={{
+              backgroundColor: "var(--success)",
+              boxShadow: "0 0 4px var(--success)",
+            }}
+          />
+          <span style={{ fontSize: "11px", color: "var(--text-3)" }}>
+            Scanner active 24/7
+          </span>
+        </div>
         <a
           href="https://github.com/nayrbryanGaming/arbiter"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: "var(--accent)", textDecoration: "none", fontSize: "11px" }}
+          style={{
+            color: "var(--text-4)",
+            textDecoration: "none",
+            fontSize: "10px",
+            transition: "color 0.15s",
+          }}
+          onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "var(--accent)")}
+          onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "var(--text-4)")}
         >
-          github.com/nayrbryanGaming/arbiter
+          github/nayrbryanGaming/arbiter
         </a>
       </div>
     </aside>

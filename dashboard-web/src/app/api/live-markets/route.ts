@@ -43,7 +43,7 @@ export async function GET(req: Request) {
       `${GAMMA}/markets?active=true&closed=false&limit=${limit}&order=volume&ascending=false`,
       {
         headers: { "User-Agent": "arbiter-dashboard/1.0" },
-        next: { revalidate: 30 },
+        cache: "no-store",
       }
     );
     if (!res.ok) throw new Error(`Gamma API ${res.status}`);
