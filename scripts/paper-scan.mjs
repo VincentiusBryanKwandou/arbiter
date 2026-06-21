@@ -74,6 +74,9 @@ const stats      = readJson(join(DATA, "stats.json"), defaultStats);
 const allTrades  = readJson(join(DATA, "trades.json"), []);
 const equity     = readJson(join(DATA, "equity.json"), []);
 
+// Preserve started_at across restarts (first-run anchor for uptime)
+if (!stats.started_at) stats.started_at = new Date().toISOString();
+
 // Reset daily counters if date changed
 const today = todayPrefix();
 const statsDate = stats.last_scan_at?.slice(0, 10);

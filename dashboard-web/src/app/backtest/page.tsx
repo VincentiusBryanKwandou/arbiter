@@ -229,7 +229,7 @@ async function BacktestContent() {
           ))}
         </div>
         <div style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "14px", lineHeight: 1.6 }}>
-          {[true, false, true, false].every((_, i) => [bt.total_return_pct > 0, bt.monte_carlo_ruin_prob < 0.05, bt.sharpe_ratio >= 0.5, bt.max_drawdown_pct < 25][i])
+          {bt.total_return_pct > 0 && bt.monte_carlo_ruin_prob < 0.05 && bt.sharpe_ratio >= 0.5 && bt.max_drawdown_pct < 25
             ? "All gates passed. Strategy is ready for paper trading validation before live deployment."
             : "One or more gates failed. Do not deploy to live trading. Review strategy parameters."}
         </div>
