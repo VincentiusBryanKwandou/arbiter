@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "@/components/Sidebar";
-import { TopBar } from "@/components/TopBar";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -12,14 +10,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Arbiter — Political Market Quant",
+  title: "Arbiter — Autonomous Arbitrage Intelligence",
   description:
-    "Cross-market arbitrage bot for political prediction markets. " +
-    "Dutch book detection · Fractional Kelly · Paper trading by default.",
+    "Detect Dutch-book arbitrage on Polymarket in real time. Fractional Kelly sizing, automatic kill switch, 24/7 cloud execution.",
   metadataBase: new URL("https://arbiterbot.vercel.app"),
   openGraph: {
-    title: "Arbiter",
-    description: "Political Market Arbitrage Bot",
+    title: "Arbiter — Autonomous Arbitrage Intelligence",
+    description: "Dutch book detection · Fractional Kelly · Paper trading by default.",
     type: "website",
     url: "https://arbiterbot.vercel.app",
   },
@@ -28,24 +25,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body>
-        <div style={{ display: "flex", height: "100vh", overflow: "hidden", backgroundColor: "var(--bg)" }}>
-          <Sidebar />
-          <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", minWidth: 0 }}>
-            <TopBar />
-            <main
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                padding: "20px 24px 32px",
-                scrollbarGutter: "stable",
-              }}
-            >
-              {children}
-            </main>
-          </div>
-        </div>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

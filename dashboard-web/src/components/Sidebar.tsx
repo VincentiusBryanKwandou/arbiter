@@ -52,11 +52,11 @@ function IconRisk() {
 }
 
 const NAV = [
-  { href: "/",         label: "Dashboard",    Icon: IconDashboard },
-  { href: "/markets",  label: "Markets",      Icon: IconMarkets },
-  { href: "/trades",   label: "Trade Log",    Icon: IconTrades },
-  { href: "/backtest", label: "Backtest",     Icon: IconBacktest },
-  { href: "/risk",     label: "Risk Monitor", Icon: IconRisk },
+  { href: "/dashboard", label: "Dashboard",    Icon: IconDashboard },
+  { href: "/markets",   label: "Markets",      Icon: IconMarkets },
+  { href: "/trades",    label: "Trade Log",    Icon: IconTrades },
+  { href: "/backtest",  label: "Backtest",     Icon: IconBacktest },
+  { href: "/risk",      label: "Risk Monitor", Icon: IconRisk },
 ];
 
 export function Sidebar() {
