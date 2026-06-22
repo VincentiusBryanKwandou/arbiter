@@ -1,30 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFileSync, existsSync } from "fs";
-import { join } from "path";
 
 export const dynamic = "force-dynamic";
 
-const BOT_URL = process.env.BOT_API_URL;
+const REPO_RAW = "https://raw.githubusercontent.com/nayrbryanGaming/arbiter/main/dashboard-web/public/data";
 
 export async function GET(req: NextRequest) {
-  const limit = parseInt(req.nextUrl.searchParams.get("limit") ?? "100");
+  const limit = Math.min(parseInt(req.nextUrl.searchParams.get("limit") ?? "100"), 500);
 
-  if (BOT_URL) {
+  // ── Neon Postgres ─────────────────────────────────────────────────────────
+  if (process.env.DATABASE_URL) {
     try {
-      const res = await fetch(`${BOT_URL}/trades?limit=${limit}`, {
-        cache: "no-store",
-        signal: (() => { const c = new AbortController(); setTimeout(() => c.abort(), 8_000); return c.signal; })(),
-      });
-      if (res.ok) return NextResponse.json(await res.json());
-    } catch { /* fall through */ }
+      const { getDb } = await import("@/lib/db");
+      const sql = getDb();
+      const rows = (await (sql`
+        SELECT id, timestamp, market_id, description, strategy, venue,
+               sets, notional_usd, locked_profit, fill_pct, note, mode, edge_pct
+        FROM trades
+        ORDER BY timestamp DESC
+        LIMIT ${limit}
+      ` as Promise<Record<string, unknown>[]>));
+      return NextResponse.json(
+        rows.map((t) => ({
+          id:            String(t.id),
+          timestamp:     (t.timestamp as Date)?.toISOString() ?? "",
+          market_id:     String(t.market_id ?? ""),
+          description:   String(t.description ?? ""),
+          strategy:      String(t.strategy ?? ""),
+          venue:         String(t.venue ?? ""),
+          sets:          Number(t.sets ?? 0),
+          notional_usd:  Number(t.notional_usd ?? 0),
+          locked_profit: Number(t.locked_profit ?? 0),
+          fill_pct:      Number(t.fill_pct ?? 1),
+          note:          String(t.note ?? ""),
+          mode:          String(t.mode ?? "paper"),
+          edge_pct:      Number(t.edge_pct ?? 0),
+        })),
+        { headers: { "Cache-Control": "no-store" } }
+      );
+    } catch (err) {
+      console.error("[trades] Neon read failed:", err);
+    }
   }
 
-  const filePath = join(process.cwd(), "public", "data", "trades.json");
+  // ── Fallback: GitHub raw ──────────────────────────────────────────────────
   try {
-    if (existsSync(filePath)) {
-      const all = JSON.parse(readFileSync(filePath, "utf-8")) as unknown[];
+    const c = new AbortController();
+    setTimeout(() => c.abort(), 5000);
+    const res = await fetch(`${REPO_RAW}/trades.json?_=${Date.now()}`, {
+      cache: "no-store",
+      signal: c.signal,
+    });
+    if (res.ok) {
+      const all = (await res.json()) as unknown[];
       return NextResponse.json(Array.isArray(all) ? all.slice(-limit).reverse() : []);
     }
   } catch { /* ignore */ }
+
   return NextResponse.json([]);
 }

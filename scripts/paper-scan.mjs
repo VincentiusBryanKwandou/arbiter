@@ -1,9 +1,30 @@
 #!/usr/bin/env node
 // Paper trading scanner — runs in GitHub Actions every 5 min.
-// Uses only Node.js built-ins (fetch, fs) — zero npm install needed.
+// Writes state to Neon Postgres (when DATABASE_URL is set) + JSON files.
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+
+// ── Neon Postgres client (optional — requires @neondatabase/serverless) ──────
+let neonSql = null;
+if (process.env.DATABASE_URL) {
+  try {
+    const { neon } = await import("@neondatabase/serverless");
+    neonSql = neon(process.env.DATABASE_URL);
+    console.log("Neon Postgres: connected.");
+  } catch (err) {
+    console.warn("Neon driver not available:", err.message, "— writing JSON only.");
+  }
+}
+
+async function dbRun(query, ...params) {
+  if (!neonSql) return;
+  try {
+    await neonSql(query, params);
+  } catch (err) {
+    console.warn("DB write error:", err.message);
+  }
+}
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DATA = join(ROOT, "dashboard-web", "public", "data");
@@ -110,6 +131,7 @@ if (stats.kill_switch_active) {
   console.log("Kill switch active — skipping scan.");
   stats.last_scan_at = new Date().toISOString();
   writeJson(join(DATA, "stats.json"), stats);
+  if (neonSql) await dbRun(`UPDATE bot_stats SET last_scan_at = NOW(), kill_switch_active = true WHERE id = 1`);
   process.exit(0);
 }
 
@@ -119,6 +141,7 @@ if ((stats.consecutive_api_failures ?? 0) >= 3) {
   await sendTelegram("⚡ <b>Arbiter circuit breaker</b>\n3+ consecutive API failures. Scanner halted pending recovery.");
   stats.last_scan_at = new Date().toISOString();
   writeJson(join(DATA, "stats.json"), stats);
+  if (neonSql) await dbRun(`UPDATE bot_stats SET last_scan_at = NOW(), consecutive_api_failures = $1 WHERE id = 1`, stats.consecutive_api_failures);
   process.exit(0);
 }
 
@@ -139,6 +162,7 @@ try {
   stats.consecutive_api_failures = (stats.consecutive_api_failures ?? 0) + 1;
   stats.last_scan_at = new Date().toISOString();
   writeJson(join(DATA, "stats.json"), stats);
+  if (neonSql) await dbRun(`UPDATE bot_stats SET last_scan_at = NOW(), consecutive_api_failures = $1 WHERE id = 1`, stats.consecutive_api_failures);
   process.exit(0);
 }
 console.log(`Fetched ${rows.length} markets.`);
@@ -284,10 +308,100 @@ equity.push({
 // Keep only last 500 data points (≈ 41 hours at 5-min intervals)
 if (equity.length > 500) equity.splice(0, equity.length - 500);
 
-// ── Write files ───────────────────────────────────────────────────────────────
+// ── Write files (always — GitHub raw fallback) ────────────────────────────────
 writeJson(join(DATA, "stats.json"),         stats);
-writeJson(join(DATA, "trades.json"),        allTrades.slice(-200));  // keep last 200
+writeJson(join(DATA, "trades.json"),        allTrades.slice(-200));
 writeJson(join(DATA, "equity.json"),        equity);
 writeJson(join(DATA, "opportunities.json"), opportunities.slice(0, 20));
+
+// ── Write to Neon Postgres (when DATABASE_URL is set) ────────────────────────
+if (neonSql) {
+  // Upsert bot_stats row 1
+  await dbRun(`
+    INSERT INTO bot_stats (
+      id, mode, bankroll_usd, realized_pnl_today, realized_pnl_total,
+      win_rate, avg_edge_pct, kill_switch_active, daily_loss_pct,
+      open_positions, max_open_positions, trades_today, opportunities_found_today,
+      last_scan_at, uptime_hours, started_at, updated_at, consecutive_api_failures
+    ) VALUES (
+      1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), $16
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      mode = EXCLUDED.mode,
+      bankroll_usd = EXCLUDED.bankroll_usd,
+      realized_pnl_today = EXCLUDED.realized_pnl_today,
+      realized_pnl_total = EXCLUDED.realized_pnl_total,
+      win_rate = EXCLUDED.win_rate,
+      avg_edge_pct = EXCLUDED.avg_edge_pct,
+      kill_switch_active = EXCLUDED.kill_switch_active,
+      daily_loss_pct = EXCLUDED.daily_loss_pct,
+      open_positions = EXCLUDED.open_positions,
+      max_open_positions = EXCLUDED.max_open_positions,
+      trades_today = EXCLUDED.trades_today,
+      opportunities_found_today = EXCLUDED.opportunities_found_today,
+      last_scan_at = EXCLUDED.last_scan_at,
+      uptime_hours = EXCLUDED.uptime_hours,
+      started_at = EXCLUDED.started_at,
+      updated_at = NOW(),
+      consecutive_api_failures = EXCLUDED.consecutive_api_failures
+  `,
+    stats.mode,
+    stats.bankroll_usd,
+    stats.realized_pnl_today,
+    stats.realized_pnl_total,
+    stats.win_rate,
+    stats.avg_edge_pct,
+    stats.kill_switch_active,
+    stats.daily_loss_pct,
+    stats.open_positions,
+    stats.max_open_positions,
+    stats.trades_today,
+    stats.opportunities_found_today,
+    stats.last_scan_at,
+    stats.uptime_hours,
+    stats.started_at,
+    stats.consecutive_api_failures ?? 0,
+  );
+
+  // Insert new trades (ignore duplicates)
+  for (const t of newTrades) {
+    await dbRun(`
+      INSERT INTO trades (id, timestamp, market_id, description, strategy, venue,
+                          sets, notional_usd, locked_profit, fill_pct, note, mode, edge_pct)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      ON CONFLICT (id) DO NOTHING
+    `,
+      t.id, t.timestamp, t.market_id, t.description, t.strategy, t.venue,
+      t.sets, t.notional_usd, t.locked_profit, t.fill_pct, t.note, t.mode, t.edge_pct,
+    );
+  }
+
+  // Upsert today's equity point
+  const todayDate = today;
+  await dbRun(`
+    INSERT INTO equity_history (date, equity, pnl)
+    VALUES ($1::date, $2, $3)
+    ON CONFLICT (date) DO UPDATE SET
+      equity = EXCLUDED.equity,
+      pnl    = EXCLUDED.pnl
+  `, todayDate, stats.bankroll_usd, stats.realized_pnl_total);
+
+  // Mark old opportunities inactive, insert new ones
+  await dbRun(`UPDATE opportunities SET is_active = false WHERE detected_at < NOW() - INTERVAL '1 hour'`);
+  for (const opp of opportunities.slice(0, 20)) {
+    await dbRun(`
+      INSERT INTO opportunities (market_id, question, edge_pct, implied_prob_yes, implied_prob_no,
+                                  depth_usd, strategy, venue, detected_at, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), true)
+      ON CONFLICT (market_id, detected_at) DO NOTHING
+    `,
+      opp.market_id, opp.question, opp.edge_pct,
+      opp.prices?.[0] ?? 0, opp.prices?.[1] ?? 0,
+      opp.depth_usd, opp.strategy, opp.venue,
+    );
+  }
+
+  console.log("Neon Postgres: state synced.");
+}
 
 console.log(`Done. Bankroll: $${stats.bankroll_usd} | Total PnL: $${stats.realized_pnl_total} | Uptime: ${stats.uptime_hours}h`);
