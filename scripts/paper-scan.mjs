@@ -9,12 +9,28 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DATA = join(ROOT, "dashboard-web", "public", "data");
 
 // ── Config ────────────────────────────────────────────────────────────────────
-const BANKROLL_INITIAL = 1000;
-const KELLY_FRACTION   = 0.25;      // ¼ Kelly
-const MAX_POSITIONS    = 5;
-const MIN_EDGE_PCT     = 0.03;      // 3% min edge after fees
-const KILL_LOSS_PCT    = 0.10;      // 10% daily loss → kill switch
-const GAMMA            = "https://gamma-api.polymarket.com";
+const BANKROLL_INITIAL  = 1000;
+const KELLY_FRACTION    = 0.25;       // ¼ Kelly
+const MAX_POSITIONS     = 5;
+const MIN_EDGE_PCT      = 0.03;       // 3% min edge after fees
+const KILL_LOSS_PCT     = 0.10;       // 10% daily loss → kill switch
+const MIN_LIQUIDITY_USD = 500;        // liquidity gate: skip thin markets
+const RESOLUTION_BUFFER_H = 2;       // skip markets resolving in < 2 hours
+const GAMMA             = "https://gamma-api.polymarket.com";
+
+// ── Telegram alert (optional — set TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID) ───
+async function sendTelegram(msg) {
+  const token  = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: "HTML" }),
+    });
+  } catch { /* non-blocking */ }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function readJson(file, fallback) {
@@ -97,6 +113,15 @@ if (stats.kill_switch_active) {
   process.exit(0);
 }
 
+// ── Circuit breaker: skip if data feed failed last 3 consecutive scans ───────
+if ((stats.consecutive_api_failures ?? 0) >= 3) {
+  console.warn("Circuit breaker: 3+ consecutive API failures — halting scan.");
+  await sendTelegram("⚡ <b>Arbiter circuit breaker</b>\n3+ consecutive API failures. Scanner halted pending recovery.");
+  stats.last_scan_at = new Date().toISOString();
+  writeJson(join(DATA, "stats.json"), stats);
+  process.exit(0);
+}
+
 // ── Fetch Polymarket markets ──────────────────────────────────────────────────
 console.log("Fetching Polymarket markets…");
 let rows = [];
@@ -108,8 +133,10 @@ try {
   if (!res.ok) throw new Error(`Gamma API ${res.status}`);
   const data = await res.json();
   rows = Array.isArray(data) ? data : data.data ?? [];
+  stats.consecutive_api_failures = 0; // reset on success
 } catch (err) {
   console.error("Gamma API error:", err.message);
+  stats.consecutive_api_failures = (stats.consecutive_api_failures ?? 0) + 1;
   stats.last_scan_at = new Date().toISOString();
   writeJson(join(DATA, "stats.json"), stats);
   process.exit(0);
@@ -119,6 +146,8 @@ console.log(`Fetched ${rows.length} markets.`);
 // ── Detect Dutch-book opportunities ──────────────────────────────────────────
 const opportunities = [];
 
+const now = Date.now();
+
 for (const r of rows) {
   const question = String(r.question ?? "").trim();
   if (!question) continue;
@@ -127,6 +156,17 @@ for (const r of rows) {
   const prices   = parseList(r.outcomePrices ?? []).map(toNum);
 
   if (outcomes.length < 2 || prices.length < 2) continue;
+
+  // Liquidity gate — skip thin markets
+  const liquidity = toNum(r.liquidity ?? r.volume ?? 0);
+  if (liquidity < MIN_LIQUIDITY_USD) continue;
+
+  // Resolution buffer — skip markets resolving within 2 hours
+  const endDateRaw = r.end_date_iso ?? r.endDateIso ?? r.end_date ?? null;
+  if (endDateRaw) {
+    const endMs = new Date(endDateRaw).getTime();
+    if (!isNaN(endMs) && endMs - now < RESOLUTION_BUFFER_H * 3_600_000) continue;
+  }
 
   const sumPrices = prices.reduce((a, b) => a + b, 0);
   const edge      = +(Math.max(0, 1.0 - sumPrices - 0.02)).toFixed(4);
@@ -195,15 +235,27 @@ if (
     stats.realized_pnl_total  = +(stats.realized_pnl_total + lockedProfit).toFixed(4);
 
     console.log(`Paper trade: ${opp.question.slice(0, 60)} | edge ${(opp.edge_pct * 100).toFixed(1)}% | profit $${lockedProfit}`);
+    await sendTelegram(
+      `📊 <b>Arbiter paper trade</b>\n` +
+      `${opp.question.slice(0, 80)}\n` +
+      `Edge: +${(opp.edge_pct * 100).toFixed(1)}% | Notional: $${notional} | Profit: +$${lockedProfit}\n` +
+      `Bankroll: $${stats.bankroll_usd}`
+    );
   }
 }
 
 // ── Kill switch check ─────────────────────────────────────────────────────────
 const lossToday    = stats.realized_pnl_today < 0 ? Math.abs(stats.realized_pnl_today) : 0;
 stats.daily_loss_pct = +(lossToday / BANKROLL_INITIAL).toFixed(4);
-if (stats.daily_loss_pct >= KILL_LOSS_PCT) {
+if (stats.daily_loss_pct >= KILL_LOSS_PCT && !stats.kill_switch_active) {
   stats.kill_switch_active = true;
   console.warn("Kill switch triggered! Daily loss exceeded 10%.");
+  await sendTelegram(
+    `🔴 <b>Arbiter KILL SWITCH triggered</b>\n` +
+    `Daily loss: ${(stats.daily_loss_pct * 100).toFixed(1)}% ≥ 10% limit\n` +
+    `Bankroll: $${stats.bankroll_usd}\n` +
+    `Bot halted. Manual reset required.`
+  );
 }
 
 // ── Update stats ──────────────────────────────────────────────────────────────
