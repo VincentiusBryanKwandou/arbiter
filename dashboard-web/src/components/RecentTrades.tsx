@@ -27,7 +27,7 @@ export function RecentTrades({
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [modeFilter, setModeFilter] = useState<"all" | "paper" | "live">("all");
 
-  if (!trades.length) {
+  if (!trades?.length) {
     return (
       <div
         style={{

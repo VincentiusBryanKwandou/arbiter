@@ -109,7 +109,7 @@ function OpenPositionModal({ onClose, onSuccess }: { onClose: () => void; onSucc
       setScanErr(res.error);
       setStep("idle");
     } else {
-      setResults(res.opportunities);
+      setResults(res.opportunities ?? []);
       setStep("select");
     }
   };

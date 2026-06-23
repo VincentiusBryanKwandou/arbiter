@@ -58,7 +58,7 @@ function formatLabel(dateStr: string): string {
 }
 
 export function EquityChart({ data }: { data: EquityPoint[] }) {
-  if (!data.length) {
+  if (!data?.length) {
     return (
       <div
         style={{

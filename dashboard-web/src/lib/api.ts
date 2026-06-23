@@ -21,19 +21,29 @@ export async function fetchDashboard(): Promise<DashboardData> {
   const res = await fetch(`${BASE}/api/dashboard`, {
     cache: "no-store",
   });
-  if (!res.ok) {
+  const fallback: DashboardData = {
+    stats: defaultStats(),
+    recent_trades: [],
+    opportunities: [],
+    equity_history: [],
+    backtest: null,
+    last_updated: new Date().toISOString(),
+    bot_connected: false,
+    data_source: "static" as const,
+  };
+  if (!res.ok) return fallback;
+  try {
+    const json = await res.json() as Partial<DashboardData>;
     return {
-      stats: defaultStats(),
-      recent_trades: [],
-      opportunities: [],
-      equity_history: [],
-      backtest: null,
-      last_updated: new Date().toISOString(),
-      bot_connected: false,
-      data_source: "static" as const,
+      ...fallback,
+      ...json,
+      recent_trades:  Array.isArray(json.recent_trades)  ? json.recent_trades  : [],
+      opportunities:  Array.isArray(json.opportunities)  ? json.opportunities  : [],
+      equity_history: Array.isArray(json.equity_history) ? json.equity_history : [],
     };
+  } catch {
+    return fallback;
   }
-  return res.json();
 }
 
 export async function fetchTrades(limit = 50): Promise<Trade[]> {

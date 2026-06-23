@@ -3,7 +3,7 @@
   "name": "arbiter",
   "buildCommand": "cd dashboard-web && npm run build",
   "outputDirectory": "dashboard-web/.next",
-  "installCommand": "cd dashboard-web && npm ci",
+  "installCommand": "cd dashboard-web && npm install",
   "framework": "nextjs",
   "regions": ["sin1"],
   "headers": [

@@ -39,7 +39,7 @@ export function OpportunitiesFeed({
   botConnected?: boolean;
   vercelNative?: boolean;
 }) {
-  if (!opportunities.length) {
+  if (!opportunities?.length) {
     return (
       <EmptyState
         label={
