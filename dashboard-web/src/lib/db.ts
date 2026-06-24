@@ -28,15 +28,16 @@ export async function initSchema() {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_users_username ON users(LOWER(username))`;
 
-  // Seed default admin account — store lowercase to match how signup route stores all usernames
+  // Remove any accidentally-created lowercase duplicate of the admin account BEFORE upserting,
+  // to avoid UNIQUE constraint conflict on the username column during the update
+  await sql`DELETE FROM bot_stats WHERE user_id IN (SELECT id FROM users WHERE LOWER(username) = 'nayrbryangaming' AND id != 1)`;
+  await sql`DELETE FROM users WHERE LOWER(username) = 'nayrbryangaming' AND id != 1`;
+  // Seed / normalise admin account — always stored lowercase to match signup route behaviour
   await sql`
     INSERT INTO users (id, username, password_hash)
     VALUES (1, 'nayrbryangaming', '$2b$10$kJt1Ry9Wc3jcfJsV0kN8F.ecQd0sxZ.uyAFefY7rJ92XZ.3KeNEby')
     ON CONFLICT (id) DO UPDATE SET username = 'nayrbryangaming'
   `;
-  // Remove any accidentally-created lowercase duplicate of the admin account
-  await sql`DELETE FROM bot_stats WHERE user_id IN (SELECT id FROM users WHERE username = 'nayrbryangaming' AND id != 1)`;
-  await sql`DELETE FROM users WHERE username = 'nayrbryangaming' AND id != 1`;
   // Advance SERIAL sequence past the explicitly-seeded id=1 so the first registration always succeeds
   await sql`SELECT setval('users_id_seq', (SELECT MAX(id) FROM users))`;
   await sql`
