@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { scanPolymarket } from "@/lib/scanner";
 
 export const dynamic = "force-dynamic";
@@ -38,14 +39,14 @@ async function fetchJson<T>(url: string, fallback: T, timeoutMs = 5000): Promise
 type Row = Record<string, unknown>;
 
 // ── Read from Neon Postgres ───────────────────────────────────────────────────
-async function readFromNeon() {
+async function readFromNeon(userId: number) {
   const { getDb } = await import("@/lib/db");
   const sql = getDb();
 
   const [statsRows, tradesRows, equityRows, oppsRows] = await Promise.all([
-    sql`SELECT * FROM bot_stats WHERE id = 1` as Promise<Row[]>,
-    sql`SELECT * FROM trades ORDER BY timestamp DESC LIMIT 50` as Promise<Row[]>,
-    sql`SELECT date, equity, pnl FROM equity_history ORDER BY date DESC LIMIT 90` as Promise<Row[]>,
+    sql`SELECT * FROM bot_stats WHERE user_id = ${userId} LIMIT 1` as Promise<Row[]>,
+    sql`SELECT * FROM trades WHERE user_id = ${userId} ORDER BY timestamp DESC LIMIT 50` as Promise<Row[]>,
+    sql`SELECT date, equity, pnl FROM equity_history WHERE user_id = ${userId} ORDER BY date DESC LIMIT 90` as Promise<Row[]>,
     sql`SELECT * FROM opportunities WHERE is_active = true ORDER BY detected_at DESC LIMIT 20` as Promise<Row[]>,
   ]);
 
@@ -131,14 +132,18 @@ async function readFromGitHub() {
   };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // Identify the requesting user — default to user_id=1 (nayrbryanGaming) if unauthenticated
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET }).catch(() => null);
+  const userId = token?.userId ? Number(token.userId) : 1;
+
   // ── Choose data source ────────────────────────────────────────────────────
   let dbData: Awaited<ReturnType<typeof readFromNeon | typeof readFromGitHub>>;
   const hasDb = !!process.env.DATABASE_URL;
 
   if (hasDb) {
     try {
-      dbData = await readFromNeon();
+      dbData = await readFromNeon(userId);
     } catch (err) {
       console.error("[dashboard] Neon read failed, falling back to GitHub:", err);
       dbData = await readFromGitHub();

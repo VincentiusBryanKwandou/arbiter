@@ -34,6 +34,8 @@ export async function initSchema() {
     VALUES (1, 'nayrbryanGaming', '$2b$10$kJt1Ry9Wc3jcfJsV0kN8F.ecQd0sxZ.uyAFefY7rJ92XZ.3KeNEby')
     ON CONFLICT (username) DO NOTHING
   `;
+  // Advance SERIAL sequence past the explicitly-seeded id=1 so the first registration succeeds
+  await sql`SELECT setval('users_id_seq', (SELECT MAX(id) FROM users))`;
   await sql`
     CREATE TABLE IF NOT EXISTS bot_stats (
       id              SERIAL PRIMARY KEY,
@@ -99,16 +101,18 @@ export async function initSchema() {
       UNIQUE(market_id, detected_at)
     )
   `;
-  // Seed initial bot_stats row if none exists
-  await sql`
-    INSERT INTO bot_stats (id) VALUES (1)
-    ON CONFLICT (id) DO NOTHING
-  `;
   // Add user_id to existing tables (idempotent — safe to re-run)
   await sql`ALTER TABLE bot_stats      ADD COLUMN IF NOT EXISTS user_id INT NOT NULL DEFAULT 1`;
   await sql`ALTER TABLE trades         ADD COLUMN IF NOT EXISTS user_id INT NOT NULL DEFAULT 1`;
   await sql`ALTER TABLE equity_history ADD COLUMN IF NOT EXISTS user_id INT NOT NULL DEFAULT 1`;
   await sql`ALTER TABLE opportunities  ADD COLUMN IF NOT EXISTS user_id INT NOT NULL DEFAULT 1`;
+  // Unique index on bot_stats.user_id enables per-user upsert without the serial id
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_bot_stats_user_id ON bot_stats(user_id)`;
+  // Seed nayrbryanGaming's initial bot_stats row (user_id=1)
+  await sql`
+    INSERT INTO bot_stats (user_id) VALUES (1)
+    ON CONFLICT (user_id) DO NOTHING
+  `;
 
   // Immutable audit trail — append-only, indexed on created_at for time-range queries
   await sql`
@@ -124,6 +128,14 @@ export async function initSchema() {
     )
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at)`;
+}
+
+// Seed initial empty stats row for a newly registered user
+export async function seedUserStats(userId: number): Promise<void> {
+  try {
+    const sql = getDb();
+    await sql`INSERT INTO bot_stats (user_id) VALUES (${userId}) ON CONFLICT (user_id) DO NOTHING`;
+  } catch { /* non-blocking */ }
 }
 
 // Best-effort audit write — never throws, never blocks the response path

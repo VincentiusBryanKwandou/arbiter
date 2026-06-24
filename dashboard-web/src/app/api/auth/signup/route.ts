@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getDb } from "@/lib/db";
+import { getDb, seedUserStats } from "@/lib/db";
 import { sanitizeString, applyRateLimit } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +41,9 @@ export async function POST(req: NextRequest) {
       RETURNING id
     ` as { id: number }[];
 
-    return NextResponse.json({ ok: true, userId: rows[0].id }, { status: 201 });
+    const newUserId = rows[0].id;
+    void seedUserStats(newUserId);
+    return NextResponse.json({ ok: true, userId: newUserId }, { status: 201 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes("unique") || msg.includes("duplicate")) {

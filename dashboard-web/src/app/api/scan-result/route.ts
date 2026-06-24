@@ -110,11 +110,11 @@ export async function POST(req: NextRequest) {
     const { getDb } = await import("@/lib/db");
     const sql = getDb();
 
-    // Upsert bot_stats
+    // Upsert bot_stats for nayrbryanGaming (user_id=1) — the scanner always writes to owner account
     if (stats) {
       await (sql`
         INSERT INTO bot_stats (
-          id, mode, bankroll_usd, realized_pnl_today, realized_pnl_total,
+          user_id, mode, bankroll_usd, realized_pnl_today, realized_pnl_total,
           win_rate, avg_edge_pct, kill_switch_active, daily_loss_pct,
           open_positions, max_open_positions, trades_today, opportunities_found_today,
           last_scan_at, uptime_hours, started_at, updated_at, consecutive_api_failures
@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
           NOW(),
           ${sanitizeNumber(stats.consecutive_api_failures, 0, 10000)}
         )
-        ON CONFLICT (id) DO UPDATE SET
+        ON CONFLICT (user_id) DO UPDATE SET
           mode = EXCLUDED.mode,
           bankroll_usd = EXCLUDED.bankroll_usd,
           realized_pnl_today = EXCLUDED.realized_pnl_today,
