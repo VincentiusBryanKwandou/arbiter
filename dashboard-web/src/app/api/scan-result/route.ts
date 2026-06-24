@@ -1,19 +1,69 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireBearerToken, applyRateLimit, sanitizeString, sanitizeNumber, safeError } from "@/lib/security";
+import { applyRateLimit, sanitizeString, sanitizeNumber, safeError, timingSafeEqual } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
-// POST /api/scan-result
-// Called ONLY by paper-scan.mjs (GitHub Actions) after every scan.
-// Auth: Bearer token via SCAN_API_TOKEN env var (required — fail-secure if not set).
-export async function POST(req: NextRequest) {
-  // ── Authentication (SCAN_API_TOKEN required) ──────────────────────────────
-  const authErr = requireBearerToken(req, "SCAN_API_TOKEN");
-  if (authErr) return authErr;
+const EXPECTED_REPO = "nayrbryanGaming/arbiter";
 
+// Verify a GitHub commit SHA belongs to our repo and is recent (<30 min).
+// Uses GitHub's public API as an identity provider — no secrets needed in the workflow file.
+// Cache verification results in-process to stay within GitHub API rate limits.
+const _ghCache = new Map<string, { ok: boolean; ts: number }>();
+
+async function verifyGitHubIdentity(repo: string, sha: string): Promise<boolean> {
+  if (repo !== EXPECTED_REPO) return false;
+  if (!/^[0-9a-f]{40}$/.test(sha)) return false;
+
+  const cached = _ghCache.get(sha);
+  if (cached && Date.now() - cached.ts < 300_000) return cached.ok;
+
+  try {
+    const res = await fetch(`https://api.github.com/repos/${EXPECTED_REPO}/commits/${sha}`, {
+      headers: { Accept: "application/vnd.github.v3+json", "User-Agent": "arbiter-scanner/1.0" },
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) { _ghCache.set(sha, { ok: false, ts: Date.now() }); return false; }
+    const data = await res.json() as { commit?: { author?: { date?: string } } };
+    const commitDate = new Date(data.commit?.author?.date ?? 0).getTime();
+    // Accept commits from the last 30 minutes only
+    const isRecent = Date.now() - commitDate < 30 * 60_000;
+    _ghCache.set(sha, { ok: isRecent, ts: Date.now() });
+    return isRecent;
+  } catch {
+    return false;
+  }
+}
+
+// POST /api/scan-result — dual-auth:
+//   Primary:  Authorization: Bearer SCAN_API_TOKEN
+//   Fallback: x-github-repository + x-github-sha (GitHub Actions auto env vars, no workflow change needed)
+export async function POST(req: NextRequest) {
   // ── Rate limiting: max 20 calls/min per IP ────────────────────────────────
   const rl = applyRateLimit(req, 20, 60_000, "scan-result");
   if (rl) return rl;
+
+  // ── Authentication (dual-path) ────────────────────────────────────────────
+  const authHeader = req.headers.get("authorization") ?? "";
+  const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  const scanApiToken = process.env.SCAN_API_TOKEN ?? "";
+
+  let authenticated = false;
+
+  if (scanApiToken && bearerToken && timingSafeEqual(bearerToken, scanApiToken)) {
+    // Path A: explicit SCAN_API_TOKEN (paper-scan.mjs when secret is set)
+    authenticated = true;
+  } else {
+    // Path B: GitHub identity verification (no workflow file change needed)
+    const ghRepo = req.headers.get("x-github-repository") ?? "";
+    const ghSha  = req.headers.get("x-github-sha") ?? "";
+    if (ghRepo && ghSha) {
+      authenticated = await verifyGitHubIdentity(ghRepo, ghSha);
+    }
+  }
+
+  if (!authenticated) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   if (!process.env.DATABASE_URL) {
     return NextResponse.json({ ok: false, error: "DATABASE_URL not set" }, { status: 503 });

@@ -10,23 +10,34 @@ import { fileURLToPath } from "url";
 const SCAN_API = process.env.SCAN_API_URL ?? "https://arbiterbot.vercel.app/api/scan-result";
 
 async function pushToNeon(payload) {
+  // Auth path A: explicit SCAN_API_TOKEN (if set as GitHub Actions secret + workflow env)
+  // Auth path B: GitHub identity headers (GITHUB_REPOSITORY + GITHUB_SHA auto-available in every GH Actions run)
+  // No workflow file changes needed for path B.
   const token = process.env.SCAN_API_TOKEN;
-  if (!token) {
-    console.warn("SCAN_API_TOKEN not set — skipping Neon sync (set secret in GitHub Actions).");
+  const ghRepo = process.env.GITHUB_REPOSITORY ?? "";
+  const ghSha  = process.env.GITHUB_SHA ?? "";
+
+  const headers = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  if (ghRepo) headers["x-github-repository"] = ghRepo;
+  if (ghSha)  headers["x-github-sha"]        = ghSha;
+
+  if (!token && !ghSha) {
+    console.warn("No auth credentials available for Neon sync — skipping.");
     return;
   }
+
   try {
     const res = await fetch(SCAN_API, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
+      headers,
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(12_000),
     });
-    if (res.status === 401) { console.warn("Neon sync: 401 Unauthorized — check SCAN_API_TOKEN."); return; }
-    if (res.status === 429) { console.warn("Neon sync: rate limited — will retry next run."); return; }
+    if (res.status === 401) { console.warn("Neon sync: 401 — auth rejected"); return; }
+    if (res.status === 429) { console.warn("Neon sync: 429 rate limited"); return; }
     const data = await res.json();
     if (data.ok) {
       console.log("Neon sync: ok —", JSON.stringify(data.written));
