@@ -20,12 +20,13 @@ export async function middleware(req: NextRequest) {
 
   // Only the authenticated shell routes require a session — / and /signup are public
   const isProtected = /^\/(dashboard|trades|backtest|risk|settings|markets)(\/|$)/.test(pathname);
-  if (isProtected && process.env.NEXTAUTH_SECRET) {
-    const token = await getToken({
-      req,
-      secret: process.env.NEXTAUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
-    });
-
+  if (isProtected) {
+    const secret = process.env.NEXTAUTH_SECRET;
+    // Fail-secure: deny access if secret is not configured rather than allowing through
+    if (!secret) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+    const token = await getToken({ req, secret });
     if (!token) {
       const loginUrl = new URL("/login", req.url);
       loginUrl.searchParams.set("callbackUrl", req.url);

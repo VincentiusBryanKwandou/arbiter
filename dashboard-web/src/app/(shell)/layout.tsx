@@ -1,7 +1,17 @@
+import { getServerSession } from "next-auth/next";
+import { redirect } from "next/navigation";
+import { authOptions } from "@/lib/auth";
 import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 
-export default function ShellLayout({ children }: { children: React.ReactNode }) {
+// Defense-in-depth: even if middleware is bypassed, the layout itself verifies the session.
+// getServerSession runs server-side on every render of any shell route.
+export default async function ShellLayout({ children }: { children: React.ReactNode }) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    redirect("/login");
+  }
+
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", backgroundColor: "var(--bg)" }}>
       <Sidebar />
