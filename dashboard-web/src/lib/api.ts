@@ -93,12 +93,16 @@ export async function setBankroll(
   bankroll_usd: number,
   note = ""
 ): Promise<{ ok: boolean; old: number; new: number; error?: string }> {
-  const res = await fetch(`${BOT}/funds`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ bankroll_usd, note }),
-  });
-  return res.json();
+  try {
+    const res = await fetch("/api/bankroll", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bankroll_usd, note }),
+    });
+    return res.json();
+  } catch {
+    return { ok: false, old: bankroll_usd, new: bankroll_usd, error: "Network error" };
+  }
 }
 
 export async function scanMarkets(

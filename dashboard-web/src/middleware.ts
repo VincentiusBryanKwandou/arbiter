@@ -36,6 +36,11 @@ export async function middleware(req: NextRequest) {
 
   const res = NextResponse.next({ request: { headers: reqHeaders } });
   res.headers.set("x-request-id", rid);
+  // Prevent CDN/proxy caching of authenticated shell pages — bypass defense layer 3
+  if (isProtected) {
+    res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.headers.set("Pragma", "no-cache");
+  }
   return res;
 }
 
