@@ -1,0 +1,24 @@
+{
+  "name": "arbiter-flash-arb",
+  "version": "1.0.0",
+  "description": "Flash loan arbitrage smart contract — Base mainnet (Aave V3)",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "test:fork": "FORK=1 hardhat test",
+    "deploy:base": "hardhat run scripts/deploy.js --network base",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network baseSepolia",
+    "verify": "hardhat verify --network base",
+    "encode": "node scripts/encode-path.js"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
+    "hardhat": "^2.22.0",
+    "chai": "^4.3.0",
+    "ethers": "^6.11.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.2"
+  }
+}

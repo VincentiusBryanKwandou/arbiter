@@ -24,6 +24,11 @@ py-clob-client>=0.17
 fastapi>=0.111
 uvicorn[standard]>=0.30
 
+# === Flash Loan Arb (Fase 6+) — Base mainnet ===
+web3>=7.0                  # Ethereum/Base RPC client (async)
+eth-abi>=5.0               # ABI encoding for calldata construction
+eth-account>=0.12          # Tx signing
+
 # === Dev / test ===
 pytest>=8.0
 pytest-asyncio>=0.23
