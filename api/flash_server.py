@@ -81,6 +81,11 @@ async def main() -> None:
         return result
     monitor.scan_once = _patched_scan  # type: ignore[method-assign]
 
+    # One-shot mode for cron runners (GitHub Actions): scan once, report, exit.
+    if os.getenv("FLASH_ARB_ONCE", "0") == "1":
+        await monitor.scan_once()
+        return
+
     await monitor.run()
 
 

@@ -1,0 +1,41 @@
+name: Flash Arb Scanner (dry run)
+
+# 100% free 24/7 hosting: GitHub Actions cron, same pattern as paper-scan.yml.
+# Scans Base mainnet for flash-loan arb opportunities and reports them to the
+# dashboard (Neon) via POST /api/flash-arb. Always dry run — no tx is ever sent
+# from CI. Live execution stays a manual, local decision.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes, 24/7
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install deps
+        run: pip install "web3>=7.0" httpx structlog
+
+      - name: Run one flash arb scan (dry run)
+        run: python -m api.flash_server
+        env:
+          FLASH_ARB_ONCE: "1"
+          FLASH_ARB_DRY_RUN: "1"
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL || 'https://mainnet.base.org' }}
+          BOT_INTERNAL_SECRET: ${{ secrets.BOT_INTERNAL_SECRET }}
+          DASHBOARD_URL: https://arbiterbot.vercel.app

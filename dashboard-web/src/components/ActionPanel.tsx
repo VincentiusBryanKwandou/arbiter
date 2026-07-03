@@ -48,7 +48,7 @@ function AddFundsModal({ current, onClose, onSuccess }: { current: number; onClo
       setAlert({ text: `Bankroll updated: $${res.old.toFixed(2)} to $${res.new.toFixed(2)}`, ok: true });
       setTimeout(() => { onSuccess(res.new); onClose(); }, 1200);
     } else {
-      setAlert({ text: (res as { detail?: string }).detail ?? "Failed to update bankroll.", ok: false });
+      setAlert({ text: res.error ?? (res as { detail?: string }).detail ?? "Failed to update bankroll.", ok: false });
     }
   };
 
